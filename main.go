@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 var (
@@ -70,6 +71,25 @@ func startServer() {
 		checker.AddWatch(repository.Owner, repository.Repo, repository.Branch)
 	}
 
+	confirm := make(chan bool)
+	defer close(confirm)
+	go func() {
+		events := InitButton()
+		for {
+			select {
+			case e := <-events:
+				log.Infof("Event: %v", e)
+				if e.Pressed {
+					// non-blocking confirm. If the button is not armed, we do not care.
+					select {
+					case confirm <- true:
+					default:
+					}
+				}
+			}
+		}
+	}()
+
 	go func() {
 		colors := make(map[string]uint32)
 		for _, r := range conf.Repositories {
@@ -82,43 +102,30 @@ func startServer() {
 			select {
 			case e := <-events:
 				name := RepoName(e.Owner, e.Repo)
-				log.Infof("Repo %s changes. Waiting for trigger!", name)
+				log.Infof("Repo %s changed. Waiting for confirmation!", name)
 				led.Breathe(colors[name])
 				lcd.PrintLine(lcd.Line1, "Press to deploy!")
 				lcd.PrintLine(lcd.Line2, e.Repo)
-			}
-		}
-	}()
 
-	go func() {
-		events := InitButton()
-		for {
-			select {
-			case e := <-events:
-				log.Infof("Event: %v", e)
-				if e.Pressed {
-					led.Flash(0x00ff00)
+				select {
+				case confirmed := <-confirm:
+					if confirmed {
+						led.Flash(0x00ff00)
+					}
+				case <-time.After(30 * time.Second):
+					log.Info("Confirmation timed out.")
 				}
+				lcd.Reset()
+				led.Stop()
 			}
 		}
 	}()
-
-	//lcd.PrintLine(lcd.Line1, "    Awesome!")
-	//time.Sleep(2 * time.Second)
-	//for i := 0; i < 16; i++ {
-	//	str := ""
-	//	for j := 0; j <= i; j++ {
-	//		str = str + "*"
-	//	}
-	//	lcd.PrintLine(lcd.Line2, str)
-	//	time.Sleep(1 * time.Second)
-	//}
 
 	select {
 	case <-signalChan:
 	}
 
-	lcd.PrintLine(lcd.Line1, "   Good bye...")
+	lcd.PrintLine(lcd.Line1, "  Sleeping...")
 	lcd.Clear(lcd.Line2)
 	led.Close()
 
@@ -133,10 +140,10 @@ type Config struct {
 		Token string `yaml:"token"`
 	} `yaml:"jenkins"`
 	Repositories []struct {
-		Owner    string `yaml:"owner"`
-		Repo     string `yaml:"repo"`
-		Branch   string `yaml:"branch"`
-		Color    uint32 `yaml:"color"`
+		Owner  string `yaml:"owner"`
+		Repo   string `yaml:"repo"`
+		Branch string `yaml:"branch"`
+		Color  uint32 `yaml:"color"`
 	} `yaml:"repositories"`
 }
 

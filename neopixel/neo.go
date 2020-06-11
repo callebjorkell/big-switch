@@ -57,6 +57,7 @@ func (l *LedController) Stop() {
 func (l *LedController) Close() error {
 	l.stopper.Do(func() {
 		log.Info("Stopping LED controller")
+		l.Stop()
 		l.ws.Fini()
 	})
 	return nil

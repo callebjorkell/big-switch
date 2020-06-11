@@ -91,6 +91,11 @@ func Clear(l Line) {
 	PrintLine(l, "")
 }
 
+func Reset() {
+	PrintLine(Line1, "Awesome Deployer")
+	Clear(Line2)
+}
+
 func ClearAll() {
 	Clear(Line1)
 	Clear(Line2)
