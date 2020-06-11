@@ -18,9 +18,18 @@ type Unlocker func()
 func (i *Queue) Queue() Unlocker {
 	i.interrupt()
 	i.runLock.Lock()
+
+	i.running()
 	return func() {
 		i.done()
 	}
+}
+
+func (i *Queue) running() {
+	i.interruptLock.Lock()
+	defer i.interruptLock.Unlock()
+
+	i.waiting--
 }
 
 func (i *Queue) interrupt() {
@@ -39,12 +48,9 @@ func (i *Queue) IsInterrupted() bool {
 }
 
 func (i *Queue) done() {
-	i.interruptLock.Lock()
-	defer i.interruptLock.Unlock()
 	defer i.runLock.Unlock()
 
-	i.waiting--
-	log.Debug("Removed from queue: ", i.waiting)
+	log.Debug("Marked done. Currently waiting: ", i.waiting)
 	if i.waiting < 0 {
 		log.Warn(errors.New("number waiting in queue less than zero"))
 	}
