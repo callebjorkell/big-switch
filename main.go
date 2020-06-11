@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	app     = kingpin.New("big-switch", "Big switch trigger")
-	debug   = app.Flag("debug", "Turn on debug logging.").Bool()
-	start   = app.Command("start", "Start the deployer")
+	app   = kingpin.New("big-switch", "Big switch trigger")
+	debug = app.Flag("debug", "Turn on debug logging.").Bool()
+	start = app.Command("start", "Start the deployer")
 )
 
 func main() {
@@ -56,11 +56,8 @@ func startServer() {
 	lcd.ClearAll()
 
 	led := neopixel.NewLedController()
-	defer led.Close()
 
 	led.Breathe(0xff3399)
-
-	time.Sleep(2 * time.Second)
 
 	go func() {
 		events := InitButton()
@@ -70,7 +67,8 @@ func startServer() {
 				log.Infof("Event: %v", e)
 				if e.Pressed {
 					led.Stop()
-					led.Flash(0x0000ff)
+					led.Flash(0x00ff00)
+					led.Breathe(0xff0000)
 				}
 			}
 		}
@@ -78,9 +76,9 @@ func startServer() {
 
 	lcd.PrintLine(lcd.Line1, "    Awesome!")
 	time.Sleep(2 * time.Second)
-	for i := 0; i<16; i++ {
+	for i := 0; i < 16; i++ {
 		str := ""
-		for j := 0; j<=i; j++ {
+		for j := 0; j <= i; j++ {
 			str = str + "*"
 		}
 		lcd.PrintLine(lcd.Line2, str)
@@ -89,5 +87,7 @@ func startServer() {
 
 	lcd.PrintLine(lcd.Line1, "   Good bye...")
 	lcd.Clear(lcd.Line2)
+	led.Close()
+
 	log.Info("Done...")
 }

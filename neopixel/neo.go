@@ -1,6 +1,7 @@
 package neopixel
 
 import (
+	"errors"
 	ws "github.com/rpi-ws281x/rpi-ws281x-go"
 	log "github.com/sirupsen/logrus"
 	"sync"
@@ -23,38 +24,11 @@ type wsEngine interface {
 type LedController struct {
 	ws     wsEngine
 	once   *sync.Once
-	closer chan struct{}
 	stop   chan bool
+	lock   *sync.Mutex
 }
 
 func NewLedController() *LedController {
-	dev := initLeds()
-	return &LedController{
-		ws:     dev,
-		stop:   make(chan bool),
-		closer: make(chan struct{}),
-	}
-}
-
-func (l *LedController) Stop() {
-	log.Info("Interrupt animation.")
-	select {
-	case l.stop <- true:
-	default:
-	}
-}
-
-func (l *LedController) Close() error {
-	l.once.Do(func() {
-		log.Info("Stopping LED controller")
-		close(l.closer)
-		close(l.stop)
-		l.ws.Fini()
-	})
-	return nil
-}
-
-func initLeds() *ws.WS2811 {
 	opt := ws.DefaultOptions
 	opt.Channels[0].Brightness = brightness
 	opt.Channels[0].LedCount = ledCounts
@@ -67,7 +41,27 @@ func initLeds() *ws.WS2811 {
 	if err != nil {
 		panic(err)
 	}
-	return dev
+
+	return &LedController{
+		ws:     dev,
+		stop:   make(chan bool),
+		lock:   &sync.Mutex{},
+		once:   &sync.Once{},
+	}
+}
+
+func (l *LedController) Stop() {
+	log.Info("Interrupt animation.")
+	l.stop <- true
+}
+
+func (l *LedController) Close() error {
+	l.once.Do(func() {
+		log.Info("Stopping LED controller")
+		close(l.stop)
+		l.ws.Fini()
+	})
+	return nil
 }
 
 func (f *LedController) setColor(color uint32) error {
@@ -82,16 +76,19 @@ func (f *LedController) setColor(color uint32) error {
 
 func (l *LedController) Flash(color uint32) {
 	log.Infof("Flashing color %06x", color)
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
 	l.setColor(color)
-	<-time.After(700 * time.Millisecond)
+	<-time.After(250 * time.Millisecond)
 	l.setColor(0)
-	<-time.After(1000 * time.Millisecond)
+	<-time.After(40 * time.Millisecond)
 	l.setColor(color)
-	<-time.After(400 * time.Millisecond)
+	<-time.After(100 * time.Millisecond)
 	l.setColor(0)
-	<-time.After(500 * time.Millisecond)
+	<-time.After(40 * time.Millisecond)
 	l.setColor(color)
-	<-time.After(400 * time.Millisecond)
+	<-time.After(100 * time.Millisecond)
 	l.setColor(0)
 
 	log.Debug("Flashing done...")
@@ -102,12 +99,15 @@ func (l *LedController) clear() {
 }
 
 func (l *LedController) Breathe(color uint32) {
+	l.lock.Lock()
 	go func() {
+		defer l.lock.Unlock()
 		defer l.clear()
 		for {
 			err := l.singleBreathe(color)
 			if err != nil {
 				log.Debug("Stopping breathing: ", err)
+				break
 			}
 		}
 	}()
@@ -123,7 +123,7 @@ func (l *LedController) singleBreathe(color uint32) error {
 		select {
 		case <-l.stop:
 			log.Debug("Animation stopped.")
-			return nil
+			return errors.New("animtion is stopped")
 		default:
 		}
 
