@@ -72,13 +72,17 @@ func startServer() {
 
 	go func() {
 		colors := make(map[string]uint32)
+		for _, r := range conf.Repositories {
+			repoName := RepoName(r.Owner, r.Repo)
+			colors[repoName] = r.Color
+		}
 
 		events := checker.Changes()
 		for {
 			select {
 			case e := <-events:
 				name := RepoName(e.Owner, e.Repo)
-				log.Info("Repo %s changes. Waiting for trigger!", name)
+				log.Infof("Repo %s changes. Waiting for trigger!", name)
 				led.Breathe(colors[name])
 				lcd.PrintLine(lcd.Line1, "Press to deploy!")
 				lcd.PrintLine(lcd.Line2, e.Repo)
