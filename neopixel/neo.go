@@ -24,7 +24,7 @@ type wsEngine interface {
 type LedController struct {
 	ws      wsEngine
 	stopper sync.Once
-	queue   Queue
+	queue   *Queue
 }
 
 func NewLedController() *LedController {
