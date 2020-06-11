@@ -22,10 +22,9 @@ type wsEngine interface {
 }
 
 type LedController struct {
-	ws          wsEngine
-	stopper     sync.Once
+	ws      wsEngine
+	stopper sync.Once
 	queue   Queue
-	lock        sync.Mutex
 }
 
 func NewLedController() *LedController {
@@ -43,7 +42,7 @@ func NewLedController() *LedController {
 	}
 
 	return &LedController{
-		ws:        dev,
+		ws: dev,
 	}
 }
 
@@ -103,7 +102,6 @@ func (l *LedController) Breathe(color uint32) {
 	defer done()
 
 	go func() {
-		defer l.lock.Unlock()
 		defer l.clear()
 		for {
 			err := l.singleBreathe(color)
