@@ -28,6 +28,7 @@ func (i *Queue) interrupt() {
 	defer i.interruptLock.Unlock()
 
 	i.waiting++
+	log.Debug("Added to queue: ", i.waiting)
 }
 
 func (i *Queue) IsInterrupted() bool {
@@ -43,6 +44,7 @@ func (i *Queue) done() {
 	defer i.runLock.Unlock()
 
 	i.waiting--
+	log.Debug("Removed from queue: ", i.waiting)
 	if i.waiting < 0 {
 		log.Warn(errors.New("number waiting in queue less than zero"))
 	}
