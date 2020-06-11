@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 var (
@@ -23,16 +22,6 @@ var (
 )
 
 func main() {
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		select {
-		case <-signalChan:
-			os.Exit(0)
-		}
-	}()
-
 	cmd, err := app.Parse(os.Args[1:])
 	if err != nil {
 		fmt.Printf("%v: Try --help\n", err.Error())
@@ -60,6 +49,9 @@ func RepoName(owner, repo string) string {
 }
 
 func startServer() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
 	lcd.InitLCD()
 	lcd.ClearAll()
 
@@ -107,15 +99,19 @@ func startServer() {
 		}
 	}()
 
-	lcd.PrintLine(lcd.Line1, "    Awesome!")
-	time.Sleep(2 * time.Second)
-	for i := 0; i < 16; i++ {
-		str := ""
-		for j := 0; j <= i; j++ {
-			str = str + "*"
-		}
-		lcd.PrintLine(lcd.Line2, str)
-		time.Sleep(1 * time.Second)
+	//lcd.PrintLine(lcd.Line1, "    Awesome!")
+	//time.Sleep(2 * time.Second)
+	//for i := 0; i < 16; i++ {
+	//	str := ""
+	//	for j := 0; j <= i; j++ {
+	//		str = str + "*"
+	//	}
+	//	lcd.PrintLine(lcd.Line2, str)
+	//	time.Sleep(1 * time.Second)
+	//}
+
+	select {
+	case <-signalChan:
 	}
 
 	lcd.PrintLine(lcd.Line1, "   Good bye...")
