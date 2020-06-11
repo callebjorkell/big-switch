@@ -55,14 +55,9 @@ func startServer() {
 	lcd.InitLCD()
 	lcd.ClearAll()
 
-	time.Sleep(2 * time.Second)
+	c := neopixel.Breathe(0xff3399)
 
-	go func() {
-		for {
-			log.Info("Loopety loop")
-			neopixel.Test()
-		}
-	}()
+	time.Sleep(2 * time.Second)
 
 	go func() {
 		events := InitButton()
@@ -70,6 +65,10 @@ func startServer() {
 			select {
 			case e := <-events:
 				log.Infof("Event: %v", e)
+				if e.Pressed {
+					c.Close()
+					neopixel.Flash(0x0000ff)
+				}
 			}
 		}
 	}()
@@ -85,7 +84,8 @@ func startServer() {
 		time.Sleep(1 * time.Second)
 	}
 
-	<-time.After(20 * time.Second)
+	c.Close()
+
 	lcd.PrintLine(lcd.Line1, "   Good bye...")
 	lcd.Clear(lcd.Line2)
 	log.Info("Done...")
