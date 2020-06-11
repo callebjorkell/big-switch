@@ -55,7 +55,10 @@ func startServer() {
 	lcd.InitLCD()
 	lcd.ClearAll()
 
-	c := neopixel.Breathe(0xff3399)
+	led := neopixel.NewLedController()
+	defer led.Close()
+
+	led.Breathe(0xff3399)
 
 	time.Sleep(2 * time.Second)
 
@@ -66,8 +69,8 @@ func startServer() {
 			case e := <-events:
 				log.Infof("Event: %v", e)
 				if e.Pressed {
-					c.Close()
-					neopixel.Flash(0x0000ff)
+					led.Stop()
+					led.Flash(0x0000ff)
 				}
 			}
 		}
@@ -83,8 +86,6 @@ func startServer() {
 		lcd.PrintLine(lcd.Line2, str)
 		time.Sleep(1 * time.Second)
 	}
-
-	c.Close()
 
 	lcd.PrintLine(lcd.Line1, "   Good bye...")
 	lcd.Clear(lcd.Line2)

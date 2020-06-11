@@ -20,50 +20,38 @@ type wsEngine interface {
 	Leds(channel int) []uint32
 }
 
-type flasher struct {
-	ws    wsEngine
-	color uint32
+type LedController struct {
+	ws     wsEngine
+	once   *sync.Once
+	closer chan struct{}
+	stop   chan bool
 }
 
-func (f *flasher) setColor(color uint32) error {
-	for i := 0; i < len(f.ws.Leds(0)); i++ {
-		f.ws.Leds(0)[i] = color
-	}
-	log.Debug("1")
-	if err := f.ws.Render(); err != nil {
-		return err
-	}
-	log.Debug("2")
-	return nil
-}
-
-func (f *flasher) display() error {
-	log.Debug("Display")
-	f.setColor(f.color)
-	<-time.After(700 * time.Millisecond)
-	f.setColor(0)
-	<-time.After(1000 * time.Millisecond)
-	f.setColor(f.color)
-	<-time.After(400 * time.Millisecond)
-	f.setColor(0)
-	<-time.After(500 * time.Millisecond)
-	f.setColor(f.color)
-	<-time.After(400 * time.Millisecond)
-	f.setColor(0)
-	return nil
-}
-
-func Flash(color uint32) {
+func NewLedController() *LedController {
 	dev := initLeds()
-
-	cw := &flasher{
-		ws:    dev,
-		color: color,
+	return &LedController{
+		ws:     dev,
+		stop:   make(chan bool),
+		closer: make(chan struct{}),
 	}
+}
 
-	log.Infof("Flashing color %06x", color)
-	cw.display()
-	log.Debug("Flashing done...")
+func (l *LedController) Stop() {
+	log.Info("Interrupt animation.")
+	select {
+	case l.stop <- true:
+	default:
+	}
+}
+
+func (l *LedController) Close() error {
+	l.once.Do(func() {
+		log.Info("Stopping LED controller")
+		close(l.closer)
+		close(l.stop)
+		l.ws.Fini()
+	})
+	return nil
 }
 
 func initLeds() *ws.WS2811 {
@@ -82,66 +70,50 @@ func initLeds() *ws.WS2811 {
 	return dev
 }
 
-func NewCloser(c chan struct{}) *closer {
-	return &closer{
-		c,
-		&sync.Once{},
+func (f *LedController) setColor(color uint32) error {
+	for i := 0; i < len(f.ws.Leds(0)); i++ {
+		f.ws.Leds(0)[i] = color
 	}
-}
-
-type closer struct {
-	c    chan struct{}
-	once *sync.Once
-}
-
-func (c closer) Close() error {
-	log.Info("Stopping animation.")
-	c.once.Do(func() {
-		close(c.c)
-	})
-	return nil
-}
-
-func Breathe(color uint32) *closer {
-	dev := initLeds()
-
-	cw := &breathing{
-		ws: dev,
-	}
-
-	c := make(chan struct{})
-	go func() {
-		defer dev.Fini()
-		defer cw.clear()
-		for {
-			cw.display(color, c)
-			select {
-			case <-c:
-				log.Debug("Done channel triggered.")
-				return
-			default:
-			}
-		}
-	}()
-
-	return NewCloser(c)
-}
-
-type breathing struct {
-	ws wsEngine
-}
-
-func (b *breathing) clear() error {
-	for i := 0; i < len(b.ws.Leds(0)); i++ {
-		b.ws.Leds(0)[i] = 0
-	}
-	if err := b.ws.Render(); err != nil {
+	if err := f.ws.Render(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (b *breathing) display(color uint32, stop <-chan struct{}) error {
+func (l *LedController) Flash(color uint32) {
+	log.Infof("Flashing color %06x", color)
+	l.setColor(color)
+	<-time.After(700 * time.Millisecond)
+	l.setColor(0)
+	<-time.After(1000 * time.Millisecond)
+	l.setColor(color)
+	<-time.After(400 * time.Millisecond)
+	l.setColor(0)
+	<-time.After(500 * time.Millisecond)
+	l.setColor(color)
+	<-time.After(400 * time.Millisecond)
+	l.setColor(0)
+
+	log.Debug("Flashing done...")
+}
+
+func (l *LedController) clear() {
+	l.setColor(0)
+}
+
+func (l *LedController) Breathe(color uint32) {
+	go func() {
+		defer l.clear()
+		for {
+			err := l.singleBreathe(color)
+			if err != nil {
+				log.Debug("Stopping breathing: ", err)
+			}
+		}
+	}()
+}
+
+func (l *LedController) singleBreathe(color uint32) error {
 	light := uint32(0)
 	increase := true
 	log.Infof("Breathing color: %06x", color)
@@ -149,18 +121,18 @@ func (b *breathing) display(color uint32, stop <-chan struct{}) error {
 	defer tick.Stop()
 	for {
 		select {
-		case <-stop:
-			log.Debug("Animation not active.")
+		case <-l.stop:
+			log.Debug("Animation stopped.")
 			return nil
 		default:
 		}
 
 		c := withBrightness(color, light)
 
-		for i := 0; i < len(b.ws.Leds(0)); i++ {
-			b.ws.Leds(0)[i] = c
+		for i := 0; i < len(l.ws.Leds(0)); i++ {
+			l.ws.Leds(0)[i] = c
 		}
-		if err := b.ws.Render(); err != nil {
+		if err := l.ws.Render(); err != nil {
 			return err
 		}
 
