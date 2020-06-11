@@ -75,8 +75,9 @@ func (f *LedController) setColor(color uint32) error {
 }
 
 func (l *LedController) Flash(color uint32) {
-	log.Infof("Flashing color %06x", color)
+	l.Stop()
 	l.lock.Lock()
+	log.Infof("Flashing color %06x", color)
 	defer l.lock.Unlock()
 
 	l.setColor(color)
@@ -99,6 +100,7 @@ func (l *LedController) clear() {
 }
 
 func (l *LedController) Breathe(color uint32) {
+	l.Stop()
 	l.lock.Lock()
 	go func() {
 		defer l.lock.Unlock()
