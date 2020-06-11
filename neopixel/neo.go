@@ -22,10 +22,10 @@ type wsEngine interface {
 }
 
 type LedController struct {
-	ws     wsEngine
-	once   *sync.Once
-	stop   chan bool
-	lock   *sync.Mutex
+	ws          wsEngine
+	stopper     sync.Once
+	queue   Queue
+	lock        sync.Mutex
 }
 
 func NewLedController() *LedController {
@@ -43,22 +43,21 @@ func NewLedController() *LedController {
 	}
 
 	return &LedController{
-		ws:     dev,
-		stop:   make(chan bool),
-		lock:   &sync.Mutex{},
-		once:   &sync.Once{},
+		ws:        dev,
 	}
 }
 
 func (l *LedController) Stop() {
-	log.Info("Interrupt animation.")
-	l.stop <- true
+	log.Info("Stop animation.")
+	done := l.queue.Queue()
+	defer done()
+
+	l.setColor(0)
 }
 
 func (l *LedController) Close() error {
-	l.once.Do(func() {
+	l.stopper.Do(func() {
 		log.Info("Stopping LED controller")
-		close(l.stop)
 		l.ws.Fini()
 	})
 	return nil
@@ -75,10 +74,10 @@ func (f *LedController) setColor(color uint32) error {
 }
 
 func (l *LedController) Flash(color uint32) {
-	l.Stop()
-	l.lock.Lock()
+	done := l.queue.Queue()
+	defer done()
+
 	log.Infof("Flashing color %06x", color)
-	defer l.lock.Unlock()
 
 	l.setColor(color)
 	<-time.After(250 * time.Millisecond)
@@ -100,8 +99,9 @@ func (l *LedController) clear() {
 }
 
 func (l *LedController) Breathe(color uint32) {
-	l.Stop()
-	l.lock.Lock()
+	done := l.queue.Queue()
+	defer done()
+
 	go func() {
 		defer l.lock.Unlock()
 		defer l.clear()
@@ -122,11 +122,9 @@ func (l *LedController) singleBreathe(color uint32) error {
 	tick := time.NewTicker(10 * time.Millisecond)
 	defer tick.Stop()
 	for {
-		select {
-		case <-l.stop:
+		if l.queue.IsInterrupted() {
 			log.Debug("Animation stopped.")
 			return errors.New("animtion is stopped")
-		default:
 		}
 
 		c := withBrightness(color, light)
