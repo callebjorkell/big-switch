@@ -51,7 +51,7 @@ func (l *LedController) Stop() {
 	done := l.queue.Queue()
 	defer done()
 
-	l.setColor(0)
+	l.clear()
 }
 
 func (l *LedController) Close() error {
@@ -100,9 +100,9 @@ func (l *LedController) clear() {
 
 func (l *LedController) Breathe(color uint32) {
 	done := l.queue.Queue()
-	defer done()
 
 	go func() {
+		defer done()
 		defer l.clear()
 		for {
 			err := l.singleBreathe(color)
