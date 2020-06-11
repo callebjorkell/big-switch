@@ -30,9 +30,14 @@ type Checker struct {
 	stopper     sync.Once
 }
 
+func (c *Checker) Changes() <-chan ChangeEvent {
+	return c.changes
+}
+
 func (c *Checker) Close() error {
 	c.stopper.Do(func() {
 		close(c.killSwitch)
+		close(c.changes)
 	})
 	return nil
 }
