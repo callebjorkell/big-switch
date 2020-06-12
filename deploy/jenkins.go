@@ -18,7 +18,7 @@ const (
 type Jenkins struct {
 	Token      string
 	User       string
-	ClientCert *tls.Certificate
+	ClientCert tls.Certificate
 }
 
 func LoadCert(cert, key string) (tls.Certificate, error) {

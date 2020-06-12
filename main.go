@@ -75,7 +75,7 @@ func startServer() {
 	jenkins := deploy.Jenkins{
 		Token:      conf.Jenkins.Token,
 		User:       conf.Jenkins.User,
-		ClientCert: &cert,
+		ClientCert: cert,
 	}
 
 	for _, repository := range conf.Repositories {
