@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/bndr/gojenkins"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -27,12 +26,8 @@ func LoadCert(cert, key string) (tls.Certificate, error) {
 }
 
 func (j *Jenkins) Deploy(owner, repo, branch string, env Environment) error {
-	cert, err := tls.LoadX509KeyPair("/home/cmb/.tradeshift/client.crt", "/home/cmb/.tradeshift/client.key")
-	if err != nil {
-		return errors.Wrap(err, "unable to load client certificates")
-	}
 	tlsConfig := tls.Config{
-		Certificates:       []tls.Certificate{cert},
+		Certificates:       []tls.Certificate{j.ClientCert},
 		InsecureSkipVerify: true,
 	}
 	client := http.Client{
