@@ -54,7 +54,7 @@ func startServer() {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	lcd.InitLCD()
-	lcd.ClearAll()
+	lcd.Reset()
 
 	led := neopixel.NewLedController()
 
