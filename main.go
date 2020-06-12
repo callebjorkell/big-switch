@@ -67,6 +67,17 @@ func startServer() {
 		Token: conf.Github.Token,
 	}
 
+	cert, err := deploy.LoadCert(conf.Jenkins.Certificate, conf.Jenkins.Key)
+	if err != nil {
+		panic(err)
+	}
+
+	jenkins := deploy.Jenkins{
+		Token:      conf.Jenkins.Token,
+		User:       conf.Jenkins.User,
+		ClientCert: &cert,
+	}
+
 	for _, repository := range conf.Repositories {
 		checker.AddWatch(repository.Owner, repository.Repo, repository.Branch)
 	}
@@ -110,6 +121,12 @@ func startServer() {
 				select {
 				case confirmed := <-confirm:
 					if confirmed {
+						err := jenkins.Deploy("Tradeshift", "truebn-sparkles", "master", deploy.Sandbox)
+						//err := jenkins.Deploy(e.Owner, e.Repo, e.Branch, deploy.Sandbox)
+						if err != nil {
+							led.Flash(0xff0000)
+							lcd.PrintLine(lcd.Line1, " TRIGGER FAILED")
+						}
 						led.Flash(0x00ff00)
 					}
 				case <-time.After(30 * time.Second):
@@ -137,7 +154,10 @@ type Config struct {
 		Token string `yaml:"token"`
 	} `yaml:"github"`
 	Jenkins struct {
-		Token string `yaml:"token"`
+		Token       string `yaml:"token"`
+		User        string `yaml:"user"`
+		Certificate string `yaml:"certificate"`
+		Key         string `yaml:"key"`
 	} `yaml:"jenkins"`
 	Repositories []struct {
 		Owner  string `yaml:"owner"`
@@ -163,6 +183,15 @@ func getConfig() (*Config, error) {
 	}
 	if c.Jenkins.Token == "" {
 		return nil, errors.New("jenkins token is missing")
+	}
+	if c.Jenkins.User == "" {
+		return nil, errors.New("jenkins user is missing")
+	}
+	if c.Jenkins.Certificate == "" {
+		return nil, errors.New("jenkins certificate is missing")
+	}
+	if c.Jenkins.Key == "" {
+		return nil, errors.New("jenkins key is missing")
 	}
 	for i := 0; i < len(c.Repositories); i++ {
 		if c.Repositories[i].Owner == "" {

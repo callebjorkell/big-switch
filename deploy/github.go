@@ -64,6 +64,8 @@ func (c *Checker) CheckRate() error {
 	if percent > MinRatePercentage {
 		return nil
 	}
+
+	log.Debugf("Rate limiting to %d%% of %d (currently remaining: %d)", MinRatePercentage, c.Rate.Limit, c.Rate.Remaining)
 	return ErrRateLimited
 }
 
@@ -77,7 +79,7 @@ func (c *Checker) AddWatch(owner, repo, branch string) error {
 
 	go func() {
 		log.Infof("Starting to watch %s/%s:%s starting from %s", owner, repo, branch, sha)
-		t := time.NewTicker(5 * time.Second)
+		t := time.NewTicker(10 * time.Second)
 		defer t.Stop()
 
 		for {
