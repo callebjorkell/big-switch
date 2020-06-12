@@ -124,8 +124,10 @@ func startServer() {
 						err := jenkins.Deploy("Tradeshift", "truebn-sparkles", "master", deploy.Sandbox)
 						//err := jenkins.Deploy(e.Owner, e.Repo, e.Branch, deploy.Sandbox)
 						if err != nil {
-							led.Flash(0xff0000)
+							log.Warn("Unable to trigger deploy: ", err)
 							lcd.PrintLine(lcd.Line1, " TRIGGER FAILED")
+							led.Flash(0xff0000)
+							<-time.After(5 * time.Second)
 						}
 						led.Flash(0x00ff00)
 					}
