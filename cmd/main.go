@@ -79,17 +79,6 @@ func startServer() {
 		Token: conf.Github.Token,
 	}
 
-	cert, err := deploy.LoadCert(conf.Jenkins.Certificate, conf.Jenkins.Key)
-	if err != nil {
-		panic(err)
-	}
-
-	jenkins := deploy.Jenkins{
-		Token:      conf.Jenkins.Token,
-		User:       conf.Jenkins.User,
-		ClientCert: cert,
-	}
-
 	for _, repository := range conf.Repositories {
 		checker.AddWatch(repository.Owner, repository.Repo, repository.Branch)
 	}
@@ -133,8 +122,8 @@ func startServer() {
 				select {
 				case confirmed := <-confirm:
 					if confirmed {
-						err := jenkins.Deploy("callebjorkell", "big-switch", "master", deploy.Sandbox)
-						//err := jenkins.Deploy(e.Owner, e.Repo, e.Branch, deploy.Sandbox)
+						// Do actual deploy here.
+						err := fmt.Errorf("TODO: Implement me")
 						if err != nil {
 							log.Warn("Unable to trigger deploy: ", err)
 							lcd.PrintLine(lcd.Line1, " TRIGGER FAILED")

@@ -3,7 +3,6 @@ module github.com/callebjorkell/big-switch
 go 1.19
 
 require (
-	github.com/bndr/gojenkins v1.1.0
 	github.com/google/go-github/v32 v32.1.0
 	github.com/rpi-ws281x/rpi-ws281x-go v1.0.8
 	github.com/sirupsen/logrus v1.9.0
