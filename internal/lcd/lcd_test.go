@@ -9,7 +9,7 @@ import (
 
 func TestRange(t *testing.T) {
 	bits := 0x30
-	for i := range datapins {
+	for i := range dataPins {
 		fmt.Println(i, " to low")
 		fmt.Printf("0x%x\n", 0x10<<uint(i))
 		if bits&(0x10<<uint(i)) != 0 {
