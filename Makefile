@@ -7,7 +7,7 @@ BIN:=big-switch
 
 .PHONY: dev pi deps update-deps
 dev: deps
-	go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" -o $(BIN) ./cmd
+	go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" -o $(BIN) ./cmd/big-switch
 
 update-deps:
 	go get -u ./...
@@ -17,4 +17,4 @@ deps:
 	go mod download
 
 pi: deps
-	GOOS=linux GOARCH=arm GOARM=5 go build -o $(BIN) -tags=pi,arm -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" ./cmd
+	GOOS=linux GOARCH=arm GOARM=5 go build -o $(BIN) -tags=pi,arm -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" ./cmd/big-switch
