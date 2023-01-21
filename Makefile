@@ -17,8 +17,11 @@ update-deps:
 deps:
 	go mod download
 
+cross-pi: deps
+	GOOS=linux GOARCH=arm GOARM=6 go build -o $(BIN) -tags=pi,arm -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" $(PACKAGE)
+
 pi: deps
-	GOOS=linux GOARCH=arm GOARM=5 go build -o $(BIN) -tags=pi,arm -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" $(PACKAGE)
+	go build -o $(BIN) -tags=pi -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" $(PACKAGE)
 
 run:
 	go run $(PACKAGE) start
