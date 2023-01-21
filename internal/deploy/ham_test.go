@@ -7,16 +7,11 @@ import (
 	"time"
 )
 
-func TestCommit(t *testing.T) {
-	c := Checker{Token: "tok"}
-	c.GetHeadCommit("callebjorkell", "big-switch", "master")
-}
-
 func TestWatch(t *testing.T) {
 	setDebug()
 
 	c := Checker{Token: "tok"}
-	err := c.AddWatch("callebjorkell", "big-switch", "test")
+	err := c.AddWatch("fraud-screening")
 
 	<-time.After(60 * time.Second)
 	e := <-c.changes

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"os"
 )
 
 type Config struct {
@@ -16,15 +15,11 @@ type Config struct {
 	} `yaml:"services"`
 }
 
-func readConfig() (*Config, error) {
+func parseConfig(content []byte) (*Config, error) {
 	c := &Config{}
-	bytes, err := os.ReadFile("config.yaml")
+	err := yaml.Unmarshal(content, c)
 	if err != nil {
-		panic(err)
-	}
-	err = yaml.Unmarshal(bytes, c)
-	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if c.ReleaseManager.Token == "" {

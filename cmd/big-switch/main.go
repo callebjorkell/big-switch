@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -39,7 +40,7 @@ const (
 	KeyLength     = 32
 )
 
-func encryptConfig(file string) error {
+func encryptFile(file string) error {
 	content, err := os.ReadFile(file)
 	if err != nil {
 		return err
@@ -71,7 +72,7 @@ func encryptConfig(file string) error {
 	return os.WriteFile(fmt.Sprintf("%v.enc", file), cipherText, 0600)
 }
 
-func deryptConfig(file, pass string) ([]byte, error) {
+func decryptFile(file, pass string) ([]byte, error) {
 	content, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -99,30 +100,23 @@ func deryptConfig(file, pass string) ([]byte, error) {
 	return plainText, nil
 }
 
-func startServer() {
+func startServer(encryptedConfig bool) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-signalChan
+		cancel()
+	}()
 
 	lcd.InitLCD()
 	lcd.Reset()
 
 	led := neopixel.NewLedController()
 
-	p := passphrase.NewServer()
-	go p.Listen()
-
-	select {
-	case <-signalChan:
-		p.Close()
-		os.Exit(0)
-	case pass := <-p.PassChan():
-		log.Infof("got passphrase: %v", pass)
-		p.Close()
-	}
-
-	conf, err := readConfig()
+	conf, err := readConfig(ctx, encryptedConfig)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	checker := deploy.NewChecker(conf.ReleaseManager.Token)
@@ -187,11 +181,42 @@ func startServer() {
 		}
 	}()
 
-	<-signalChan
+	<-ctx.Done()
 
 	lcd.PrintLine(lcd.Line1, "  Sleeping...")
 	lcd.Clear(lcd.Line2)
 	led.Close()
 
 	log.Info("Done...")
+}
+
+func readConfig(ctx context.Context, encrypted bool) (*Config, error) {
+	const configFile = "config.yaml"
+	const encryptedConfigFile = "config.yaml.enc"
+
+	if !encrypted {
+		log.Infof("Reading plain text config from: %v", configFile)
+		content, err := os.ReadFile(configFile)
+		if err != nil {
+			return nil, err
+		}
+		return parseConfig(content)
+	}
+
+	log.Infof("Reading encrypted config from: %v", encryptedConfigFile)
+	p := passphrase.NewServer()
+	defer p.Close()
+
+	go p.Listen()
+
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("context closing before passphrase received")
+	case pass := <-p.PassChan():
+		fileContent, err := decryptFile(encryptedConfigFile, pass)
+		if err != nil {
+			log.Fatalf("Unable to decrypt config file: %v", err)
+		}
+		return parseConfig(fileContent)
+	}
 }

@@ -30,6 +30,7 @@ func (p *Server) PassChan() <-chan string {
 func (p *Server) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	log.Debug("Closing passphrase server...")
 	return p.server.Shutdown(ctx)
 }
 

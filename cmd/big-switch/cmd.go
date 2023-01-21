@@ -43,14 +43,18 @@ func newVersionCmd() *cobra.Command {
 }
 
 func newStartCmd() *cobra.Command {
-	return &cobra.Command{
+	disableEncryption := false
+	cmd := cobra.Command{
 		Use:   "start",
 		Short: "Starts the deployer server",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			startServer()
+			startServer(!disableEncryption)
 		},
 	}
+
+	cmd.Flags().BoolVar(&disableEncryption, "disable-encryption", false, "Disable the use of an encrypted config file. Not recommended.")
+	return &cmd
 }
 
 func newEncryptCmd() *cobra.Command {
@@ -59,9 +63,9 @@ func newEncryptCmd() *cobra.Command {
 		Short: "Encrypt a configuration file for later use",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := encryptConfig(args[0])
+			err := encryptFile(args[0])
 			if err != nil {
-				log.Error(err)
+				log.Fatal(err)
 			}
 		},
 	}
@@ -77,9 +81,9 @@ func newDecryptCmd() *cobra.Command {
 			if decryptPassphrase == "" {
 				log.Fatal("The passphrase cannot be empty.")
 			}
-			plain, err := deryptConfig(args[0], decryptPassphrase)
+			plain, err := decryptFile(args[0], decryptPassphrase)
 			if err != nil {
-				log.Error(err)
+				log.Fatal(err)
 			}
 			fmt.Println(string(plain))
 		},
