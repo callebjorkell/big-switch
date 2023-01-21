@@ -20,6 +20,7 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(newVersionCmd())
 	rootCmd.AddCommand(newStartCmd())
 	rootCmd.AddCommand(newEncryptCmd())
+	rootCmd.AddCommand(newDecryptCmd())
 	rootCmd.PersistentFlags().Bool("debug", false, "Turn on debug logging.")
 
 	return rootCmd
@@ -58,7 +59,24 @@ func newEncryptCmd() *cobra.Command {
 		Short: "Encrypt a configuration file for later use",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			encryptConfig(args[0])
+			err := encryptConfig(args[0])
+			if err != nil {
+				log.Error(err)
+			}
+		},
+	}
+}
+
+func newDecryptCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "decrypt <filename>",
+		Short: "Decrypt a previously encrypted configuration file",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			err := deryptConfig(args[0], "penis")
+			if err != nil {
+				log.Error(err)
+			}
 		},
 	}
 }

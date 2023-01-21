@@ -1,6 +1,11 @@
 package main
 
 import (
+	"bufio"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"github.com/callebjorkell/big-switch/internal/button"
 	"github.com/callebjorkell/big-switch/internal/deploy"
@@ -8,41 +13,91 @@ import (
 	"github.com/callebjorkell/big-switch/internal/neopixel"
 	"github.com/callebjorkell/big-switch/internal/passphrase"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/pbkdf2"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
 
-type colorFormatter struct {
-	log.TextFormatter
-}
-
-func (f *colorFormatter) Format(entry *log.Entry) ([]byte, error) {
-	var levelColor int
-	switch entry.Level {
-	case log.DebugLevel, log.TraceLevel:
-		levelColor = 90 // dark grey
-	case log.WarnLevel:
-		levelColor = 33 // yellow
-	case log.ErrorLevel, log.FatalLevel, log.PanicLevel:
-		levelColor = 91 // bright red
-	default:
-		levelColor = 39 // default
-	}
-	return []byte(fmt.Sprintf("\x1b[%dm%s\x1b[0m\n", levelColor, entry.Message)), nil
-}
-
 func main() {
-	log.SetFormatter(&colorFormatter{})
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: "2006-01-02T15:04:05",
+		FullTimestamp:   true,
+	})
 
 	if err := RootCmd().Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func encryptConfig(f string) {
-	log.Infof("Will try to encrypt %v", f)
+var encryptionSalt = []byte{0x00, 0xF0, 0x18, 0x2E, 0x88, 0x45, 0xAE, 0x99}
+
+const (
+	KeyIterations = 65536
+	KeyLength     = 32
+)
+
+func encryptConfig(file string) error {
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter passphrase: ")
+	passphrase, _ := reader.ReadString('\n')
+	passphrase = strings.TrimSpace(passphrase)
+
+	key := pbkdf2.Key([]byte(passphrase), encryptionSalt, KeyIterations, KeyLength, sha256.New)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = rand.Read(nonce); err != nil {
+		return err
+	}
+
+	cipherText := gcm.Seal(nonce, nonce, content, nil)
+
+	return os.WriteFile(fmt.Sprintf("%v.enc", file), cipherText, 0600)
+}
+
+func deryptConfig(file, pass string) error {
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	key := pbkdf2.Key([]byte(pass), encryptionSalt, KeyIterations, KeyLength, sha256.New)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return err
+	}
+
+	nonce, cipherText := content[:gcm.NonceSize()], content[gcm.NonceSize():]
+
+	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(plainText))
+	return nil
 }
 
 func startServer() {
@@ -133,9 +188,7 @@ func startServer() {
 		}
 	}()
 
-	select {
-	case <-signalChan:
-	}
+	<-signalChan
 
 	lcd.PrintLine(lcd.Line1, "  Sleeping...")
 	lcd.Clear(lcd.Line2)
