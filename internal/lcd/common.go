@@ -1,7 +1,9 @@
 package lcd
 
 import (
+	"fmt"
 	"periph.io/x/conn/v3/gpio"
+	"strings"
 	"time"
 )
 
@@ -40,3 +42,23 @@ var (
 	clockEdge         gpio.PinIO
 	dataPins          [4]gpio.PinIO
 )
+
+// Center aligns a string to the 16 character window size. If the string is longer than 16 characters, it will be
+// truncated to fit.
+func Center(msg string) string {
+	if len(msg) >= 16 {
+		return msg[:16]
+	}
+	leftPad := (16 - len(msg)) / 2
+	return fmt.Sprintf("%v%v", strings.Repeat(" ", leftPad), msg)
+}
+
+func Reset() {
+	Println(Line1, "Awesome Deployer")
+	Clear(Line2)
+}
+
+func ClearAll() {
+	Clear(Line1)
+	Clear(Line2)
+}

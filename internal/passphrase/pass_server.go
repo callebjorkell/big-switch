@@ -35,8 +35,8 @@ func (p *Server) Close() error {
 }
 
 func (p *Server) Listen() {
-	lcd.PrintLine(lcd.Line1, "Enter passphrase")
-	lcd.PrintLine(lcd.Line2, fmt.Sprintf("@%v", defaultOutboundIP()))
+	lcd.Println(lcd.Line1, "Enter passphrase")
+	lcd.Println(lcd.Line2, fmt.Sprintf("@%v", defaultOutboundIP()))
 
 	server := http.Server{Addr: ":8090"}
 	http.HandleFunc("/", passwordForm)

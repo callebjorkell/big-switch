@@ -55,7 +55,7 @@ func pulseByte(bits, mask byte) {
 	time.Sleep(signalDelay)
 }
 
-func PrintLine(l Line, msg string) {
+func Println(l Line, msg string) {
 	sendByte(byte(l), command)
 	m := fmt.Sprintf("%-16s", msg)
 	for i := 0; i < lineWidth; i++ {
@@ -64,15 +64,5 @@ func PrintLine(l Line, msg string) {
 }
 
 func Clear(l Line) {
-	PrintLine(l, "")
-}
-
-func Reset() {
-	PrintLine(Line1, "Awesome Deployer")
-	Clear(Line2)
-}
-
-func ClearAll() {
-	Clear(Line1)
-	Clear(Line2)
+	Println(l, "")
 }

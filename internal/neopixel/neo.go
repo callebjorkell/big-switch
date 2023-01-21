@@ -1,10 +1,8 @@
 package neopixel
 
 import (
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"sync"
-	"time"
 )
 
 const (
@@ -21,14 +19,14 @@ type wsEngine interface {
 }
 
 type LedController struct {
-	ws      wsEngine
-	stopper sync.Once
-	queue   Queue
+	ws          wsEngine
+	stopper     sync.Once
+	interruptor Interruptor
 }
 
 func (l *LedController) Stop() {
 	log.Info("Stop animation.")
-	done := l.queue.Queue()
+	done := l.interruptor.Interrupt()
 	defer done()
 
 	l.clear()
@@ -43,49 +41,17 @@ func (l *LedController) Close() error {
 	return nil
 }
 
-func (f *LedController) setColor(color uint32) error {
-	for i := 0; i < len(f.ws.Leds(0)); i++ {
-		f.ws.Leds(0)[i] = color
+func (l *LedController) setColor(color uint32) error {
+	for i := 0; i < len(l.ws.Leds(0)); i++ {
+		l.ws.Leds(0)[i] = color
 	}
-	if err := f.ws.Render(); err != nil {
+	if err := l.ws.Render(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *LedController) Rainbow() error {
-	done := l.queue.Queue()
-	defer done()
-	defer l.clear()
-
-	log.Debugf("Displaying rainbow")
-	tick := time.NewTicker(30 * time.Millisecond)
-	defer tick.Stop()
-
-	for step := 0; step <= 450; step++ {
-		if l.queue.IsInterrupted() {
-			return fmt.Errorf("animtion was interrupted")
-		}
-
-		c := getRGB(step)
-		if step < 50 {
-			c = withBrightness(c, uint32(step*2))
-		}
-		if step > 350 {
-			c = withBrightness(c, uint32(450-step))
-		}
-
-		err := l.setColor(c)
-		if err != nil {
-			return err
-		}
-
-		<-tick.C
-	}
-
-	return nil
-}
-
+// getRGB gets an RGB color, based on HSV, with angles aligned to 300 degrees for ease of calculation.
 func getRGB(angle int) uint32 {
 	a := uint32(angle % 300)
 	if a <= 50 {
@@ -106,81 +72,8 @@ func getRGB(angle int) uint32 {
 	return toRGB(255, 0, (300-a)*5)
 }
 
-func (l *LedController) Flash(color uint32) {
-	done := l.queue.Queue()
-	defer done()
-
-	log.Infof("Flashing color %06x", color)
-
-	l.setColor(color)
-	<-time.After(250 * time.Millisecond)
-	l.setColor(0)
-	<-time.After(40 * time.Millisecond)
-	l.setColor(color)
-	<-time.After(100 * time.Millisecond)
-	l.setColor(0)
-	<-time.After(40 * time.Millisecond)
-	l.setColor(color)
-	<-time.After(100 * time.Millisecond)
-	l.setColor(0)
-
-	log.Debug("Flashing done...")
-}
-
 func (l *LedController) clear() {
 	l.setColor(0)
-}
-
-func (l *LedController) Breathe(color uint32) {
-	done := l.queue.Queue()
-
-	go func() {
-		defer done()
-		defer l.clear()
-		for {
-			err := l.singleBreathe(color)
-			if err != nil {
-				log.Debug("Stopping breathing: ", err)
-				break
-			}
-		}
-	}()
-}
-
-func (l *LedController) singleBreathe(color uint32) error {
-	light := uint32(0)
-	increase := true
-	log.Debugf("Breathing color: %06x", color)
-	tick := time.NewTicker(10 * time.Millisecond)
-	defer tick.Stop()
-	for {
-		if l.queue.IsInterrupted() {
-			log.Debug("Animation interrupted.")
-			return fmt.Errorf("animtion is stopped")
-		}
-
-		c := withBrightness(color, light)
-
-		err := l.setColor(c)
-		if err != nil {
-			return err
-		}
-
-		if increase {
-			light++
-			if light > 100 {
-				increase = false
-			}
-		} else {
-			if light == 0 {
-				break
-			}
-			light--
-		}
-
-		<-tick.C
-	}
-	return nil
 }
 
 // Get the same color, but with a lower or equal brightness, on a scale from 0-100, where 100 is the same as the input.

@@ -122,7 +122,7 @@ func startServer(encryptedConfig bool) {
 
 	conf, err := readConfig(ctx, encryptedConfig)
 	if err != nil {
-		lcd.PrintLine(lcd.Line1, "Unable to start!")
+		lcd.Println(lcd.Line1, "Unable to start!")
 		lcd.Clear(lcd.Line2)
 		log.Error(err)
 		return
@@ -167,8 +167,8 @@ func startServer(encryptedConfig bool) {
 			case e := <-events:
 				log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
 				led.Breathe(colors[e.Service])
-				lcd.PrintLine(lcd.Line1, "Press to deploy!")
-				lcd.PrintLine(lcd.Line2, e.Service)
+				lcd.Println(lcd.Line1, "Press to deploy!")
+				lcd.Println(lcd.Line2, lcd.Center(e.Service))
 
 				select {
 				case confirmed := <-confirm:
@@ -177,13 +177,13 @@ func startServer(encryptedConfig bool) {
 						err := fmt.Errorf("TODO: Implement me")
 						if err != nil {
 							log.Warn("Unable to trigger deploy: ", err)
-							lcd.PrintLine(lcd.Line1, " TRIGGER FAILED")
+							lcd.Println(lcd.Line1, lcd.Center("TRIGGER FAILED"))
 							led.Flash(0xff0000)
 							<-time.After(5 * time.Second)
 						}
 						led.Flash(0x00ff00)
 					}
-				case <-time.After(30 * time.Second):
+				case <-time.After(45 * time.Second):
 					log.Info("Confirmation timed out.")
 				}
 				lcd.Reset()
@@ -192,9 +192,11 @@ func startServer(encryptedConfig bool) {
 		}
 	}()
 
+	lcd.Reset()
+	lcd.Println(lcd.Line2, lcd.Center("Started..."))
 	<-ctx.Done()
 
-	lcd.PrintLine(lcd.Line1, "  Sleeping...")
+	lcd.Println(lcd.Line1, lcd.Center("Sleeping..."))
 	lcd.Clear(lcd.Line2)
 
 	log.Info("Done...")
