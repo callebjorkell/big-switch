@@ -8,6 +8,7 @@ import (
 const (
 	brightness = 250
 	ledCounts  = 24
+	ColorRed   = 0xFF0000
 )
 
 type wsEngine interface {

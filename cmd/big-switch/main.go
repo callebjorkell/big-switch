@@ -128,10 +128,10 @@ func startServer(encryptedConfig bool) {
 		return
 	}
 
-	checker := deploy.NewChecker(conf.ReleaseManager.Token)
+	checker := deploy.NewChecker(conf.ReleaseManager.Url, conf.ReleaseManager.Token, conf.ReleaseManager.Caller)
 
 	for _, service := range conf.Services {
-		checker.AddWatch(service.Name)
+		checker.AddWatch(service.Name, service.Namespace)
 	}
 
 	confirm := make(chan bool)
@@ -140,6 +140,8 @@ func startServer(encryptedConfig bool) {
 		events := button.InitButton()
 		for {
 			select {
+			case <-ctx.Done():
+				break
 			case e := <-events:
 				log.Debugf("Event: %v", e)
 				if e.Pressed {
@@ -159,12 +161,11 @@ func startServer(encryptedConfig bool) {
 			colors[service.Name] = service.Color
 		}
 
-		events := checker.Changes()
 		for {
 			select {
 			case <-ctx.Done():
 				break
-			case e := <-events:
+			case e := <-checker.Changes():
 				log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
 				led.Breathe(colors[e.Service])
 				lcd.Println(lcd.Line1, "Press to deploy!")
@@ -178,7 +179,7 @@ func startServer(encryptedConfig bool) {
 						if err != nil {
 							log.Warn("Unable to trigger deploy: ", err)
 							lcd.Println(lcd.Line1, lcd.Center("TRIGGER FAILED"))
-							led.Flash(0xff0000)
+							led.Flash(neopixel.ColorRed)
 							<-time.After(5 * time.Second)
 						}
 						led.Flash(0x00ff00)

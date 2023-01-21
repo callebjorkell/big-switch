@@ -7,11 +7,14 @@ import (
 
 type Config struct {
 	ReleaseManager struct {
-		Token string `yaml:"token"`
+		Url    string `yaml:"url"`
+		Token  string `yaml:"token"`
+		Caller string `yaml:"caller"`
 	} `yaml:"releaseManager"`
 	Services []struct {
-		Name  string `yaml:"name"`
-		Color uint32 `yaml:"color"`
+		Name      string `yaml:"name"`
+		Namespace string `yaml:"namespace"`
+		Color     uint32 `yaml:"color"`
 	} `yaml:"services"`
 }
 
