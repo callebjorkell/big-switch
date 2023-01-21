@@ -68,15 +68,24 @@ func newEncryptCmd() *cobra.Command {
 }
 
 func newDecryptCmd() *cobra.Command {
-	return &cobra.Command{
+	decryptPassphrase := ""
+	cmd := cobra.Command{
 		Use:   "decrypt <filename>",
-		Short: "Decrypt a previously encrypted configuration file",
+		Short: "Decrypt a previously encrypted configuration file. The passphrase flag must be set.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := deryptConfig(args[0], "penis")
+			if decryptPassphrase == "" {
+				log.Fatal("The passphrase cannot be empty.")
+			}
+			plain, err := deryptConfig(args[0], decryptPassphrase)
 			if err != nil {
 				log.Error(err)
 			}
+			fmt.Println(string(plain))
 		},
 	}
+
+	cmd.Flags().StringVarP(&decryptPassphrase, "passphrase", "p", "", "Use the given passphrase to decrypt the file.")
+
+	return &cmd
 }

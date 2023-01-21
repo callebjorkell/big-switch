@@ -71,33 +71,32 @@ func encryptConfig(file string) error {
 	return os.WriteFile(fmt.Sprintf("%v.enc", file), cipherText, 0600)
 }
 
-func deryptConfig(file, pass string) error {
+func deryptConfig(file, pass string) ([]byte, error) {
 	content, err := os.ReadFile(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	key := pbkdf2.Key([]byte(pass), encryptionSalt, KeyIterations, KeyLength, sha256.New)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	nonce, cipherText := content[:gcm.NonceSize()], content[gcm.NonceSize():]
 
 	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	fmt.Println(string(plainText))
-	return nil
+	return plainText, nil
 }
 
 func startServer() {
