@@ -62,14 +62,17 @@ func (l *LedController) Rainbow() error {
 	tick := time.NewTicker(30 * time.Millisecond)
 	defer tick.Stop()
 
-	for step := 0; step < 400; step++ {
+	for step := 0; step <= 450; step++ {
 		if l.queue.IsInterrupted() {
 			return fmt.Errorf("animtion was interrupted")
 		}
 
 		c := getRGB(step)
-		if step > 300 {
-			c = withBrightness(c, uint32(100-(step%100)))
+		if step < 50 {
+			c = withBrightness(c, uint32(step*2))
+		}
+		if step > 350 {
+			c = withBrightness(c, uint32(450-step))
 		}
 
 		err := l.setColor(c)
@@ -79,7 +82,7 @@ func (l *LedController) Rainbow() error {
 
 		<-tick.C
 	}
-	
+
 	return nil
 }
 
