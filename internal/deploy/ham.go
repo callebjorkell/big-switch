@@ -1,15 +1,10 @@
 package deploy
 
 import (
-	"errors"
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
-
-const MinRatePercentage = 20
-
-var ErrRateLimited = errors.New("rate limiting safety margin has been hit")
 
 type ChangeEvent struct {
 	Service  string
@@ -30,7 +25,6 @@ func (c *Checker) Changes() <-chan ChangeEvent {
 func (c *Checker) Close() error {
 	c.stopper.Do(func() {
 		close(c.killSwitch)
-		close(c.changes)
 	})
 	return nil
 }
@@ -54,11 +48,10 @@ func (c *Checker) AddWatch(service string) error {
 			select {
 			case <-t.C:
 				// fall out of the select and do the work.
-			case _, open := <-c.killSwitch:
-				if !open {
-					log.Debugf("Kill switch flipped. Stopping watch of %s", service)
-					return
-				}
+			case <-c.killSwitch:
+				log.Infof("Kill switch flipped. Stopping watch of %s", service)
+				close(c.changes)
+				return
 			}
 
 			a, err := c.GetArtifacts(service)
@@ -89,6 +82,7 @@ type Artifacts struct {
 	Prod    Artifact
 	Dev     Artifact
 }
+
 type Artifact struct {
 	Time time.Time
 	Name string

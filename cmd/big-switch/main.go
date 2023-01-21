@@ -104,6 +104,7 @@ func startServer(encryptedConfig bool) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
 		<-signalChan
 		cancel()
@@ -113,10 +114,18 @@ func startServer(encryptedConfig bool) {
 	lcd.Reset()
 
 	led := neopixel.NewLedController()
+	defer led.Close()
+
+	go func() {
+		led.Rainbow()
+	}()
 
 	conf, err := readConfig(ctx, encryptedConfig)
 	if err != nil {
-		log.Fatal(err)
+		lcd.PrintLine(lcd.Line1, "Unable to start!")
+		lcd.Clear(lcd.Line2)
+		log.Error(err)
+		return
 	}
 
 	checker := deploy.NewChecker(conf.ReleaseManager.Token)
@@ -153,6 +162,8 @@ func startServer(encryptedConfig bool) {
 		events := checker.Changes()
 		for {
 			select {
+			case <-ctx.Done():
+				break
 			case e := <-events:
 				log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
 				led.Breathe(colors[e.Service])
@@ -185,7 +196,6 @@ func startServer(encryptedConfig bool) {
 
 	lcd.PrintLine(lcd.Line1, "  Sleeping...")
 	lcd.Clear(lcd.Line2)
-	led.Close()
 
 	log.Info("Done...")
 }
@@ -215,7 +225,7 @@ func readConfig(ctx context.Context, encrypted bool) (*Config, error) {
 	case pass := <-p.PassChan():
 		fileContent, err := decryptFile(encryptedConfigFile, pass)
 		if err != nil {
-			log.Fatalf("Unable to decrypt config file: %v", err)
+			return nil, fmt.Errorf("unable to decrypt config file: %w", err)
 		}
 		return parseConfig(fileContent)
 	}

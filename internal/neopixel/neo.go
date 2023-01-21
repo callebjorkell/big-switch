@@ -53,6 +53,56 @@ func (f *LedController) setColor(color uint32) error {
 	return nil
 }
 
+func (l *LedController) Rainbow() error {
+	done := l.queue.Queue()
+	defer done()
+	defer l.clear()
+
+	log.Debugf("Displaying rainbow")
+	tick := time.NewTicker(30 * time.Millisecond)
+	defer tick.Stop()
+
+	for step := 0; step < 400; step++ {
+		if l.queue.IsInterrupted() {
+			return fmt.Errorf("animtion was interrupted")
+		}
+
+		c := getRGB(step)
+		if step > 300 {
+			c = withBrightness(c, uint32(100-(step%100)))
+		}
+
+		err := l.setColor(c)
+		if err != nil {
+			return err
+		}
+
+		<-tick.C
+	}
+	
+	return nil
+}
+
+func getRGB(angle int) uint32 {
+	a := uint32(angle % 300)
+	if a <= 50 {
+		return toRGB(255, a*5, 0)
+	}
+	if a <= 100 {
+		return toRGB((100-a)*5, 255, 0)
+	}
+	if a <= 150 {
+		return toRGB(0, 255, (a-100)*5)
+	}
+	if a <= 200 {
+		return toRGB(0, (200-a)*5, 255)
+	}
+	if a <= 250 {
+		return toRGB((a-200)*5, 0, 255)
+	}
+	return toRGB(255, 0, (300-a)*5)
+}
+
 func (l *LedController) Flash(color uint32) {
 	done := l.queue.Queue()
 	defer done()
@@ -102,16 +152,14 @@ func (l *LedController) singleBreathe(color uint32) error {
 	defer tick.Stop()
 	for {
 		if l.queue.IsInterrupted() {
-			log.Debug("Animation stopped.")
+			log.Debug("Animation interrupted.")
 			return fmt.Errorf("animtion is stopped")
 		}
 
 		c := withBrightness(color, light)
 
-		for i := 0; i < len(l.ws.Leds(0)); i++ {
-			l.ws.Leds(0)[i] = c
-		}
-		if err := l.ws.Render(); err != nil {
+		err := l.setColor(c)
+		if err != nil {
 			return err
 		}
 
@@ -148,4 +196,8 @@ func withBrightness(color, light uint32) uint32 {
 	blue := b * light / 100
 
 	return (red << 16) | (green << 8) | blue
+}
+
+func toRGB(r, g, b uint32) uint32 {
+	return (r << 16) | (g << 8) | b
 }
