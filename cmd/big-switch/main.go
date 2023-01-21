@@ -132,7 +132,7 @@ func startServer(encryptedConfig bool) {
 		for {
 			select {
 			case e := <-events:
-				log.Infof("Event: %v", e)
+				log.Debugf("Event: %v", e)
 				if e.Pressed {
 					// non-blocking confirm. If the button is not armed, we do not care.
 					select {

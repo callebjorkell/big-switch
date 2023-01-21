@@ -10,22 +10,22 @@ import (
 )
 
 // InitButton initializes all the button pins and fetches a button event channel
-func InitButton() <-chan ButtonEvent {
+func InitButton() <-chan Event {
 	log.Infoln("Initializing button handler")
 
-	c := make(chan ButtonEvent, 5)
+	c := make(chan Event, 5)
 	go simulateButton(c)
 	return c
 }
 
-func simulateButton(c chan<- ButtonEvent) {
+func simulateButton(c chan<- Event) {
 	hupChan := make(chan os.Signal, 1)
 	signal.Notify(hupChan, syscall.SIGHUP)
 	defer close(hupChan)
 
 	for {
 		<-hupChan
-		c <- ButtonEvent{
+		c <- Event{
 			Pressed: true,
 		}
 	}

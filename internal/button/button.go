@@ -10,16 +10,16 @@ import (
 )
 
 // InitButton initializes all the button pins and fetches a button event channel
-func InitButton() <-chan ButtonEvent {
+func InitButton() <-chan Event {
 	log.Infoln("Initializing button handler")
 	button := gpioreg.ByName("GPIO20")
 
-	c := make(chan ButtonEvent, 5)
+	c := make(chan Event, 5)
 	go handleButton(button, c)
 	return c
 }
 
-func handleButton(b gpio.PinIO, c chan ButtonEvent) {
+func handleButton(b gpio.PinIO, c chan Event) {
 	if err := b.In(gpio.PullUp, gpio.BothEdges); err != nil {
 		log.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func handleButton(b gpio.PinIO, c chan ButtonEvent) {
 		if l == b.Read() {
 			// ... and handle
 			last = l
-			c <- ButtonEvent{
+			c <- Event{
 				Pressed: l == gpio.Low,
 			}
 		}

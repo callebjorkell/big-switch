@@ -2,11 +2,11 @@ package button
 
 import "fmt"
 
-type ButtonEvent struct {
+type Event struct {
 	Pressed bool
 }
 
-func (b ButtonEvent) String() string {
+func (b Event) String() string {
 	action := "pressed"
 	if !b.Pressed {
 		action = "released"

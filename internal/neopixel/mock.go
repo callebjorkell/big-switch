@@ -2,31 +2,42 @@
 
 package neopixel
 
-type dummyEngine struct {
+import (
+	"fmt"
+	log "github.com/sirupsen/logrus"
+)
+
+type mockEngine struct {
+	colors []uint32
 }
 
-func (d dummyEngine) Init() error {
-	panic("implement me")
+func (d mockEngine) Init() error {
+	return nil
 }
 
-func (d dummyEngine) Render() error {
-	panic("implement me")
+func (d mockEngine) Render() error {
+	fmt.Println("neopixel: Render")
+	log.Debugf("colors: %#v", d.colors)
+	return nil
 }
 
-func (d dummyEngine) Wait() error {
-	panic("implement me")
+func (d mockEngine) Wait() error {
+	fmt.Println("neopixel: Wait")
+	return nil
 }
 
-func (d dummyEngine) Fini() {
-	panic("implement me")
+func (d mockEngine) Fini() {
+	fmt.Println("neopixel: Fini")
 }
 
-func (d dummyEngine) Leds(channel int) []uint32 {
-	panic("implement me")
+func (d mockEngine) Leds(_ int) []uint32 {
+	return d.colors
 }
 
 func NewLedController() *LedController {
 	return &LedController{
-		ws: dummyEngine{},
+		ws: mockEngine{
+			colors: make([]uint32, ledCounts),
+		},
 	}
 }

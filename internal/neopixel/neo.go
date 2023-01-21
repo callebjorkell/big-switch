@@ -97,7 +97,7 @@ func (l *LedController) Breathe(color uint32) {
 func (l *LedController) singleBreathe(color uint32) error {
 	light := uint32(0)
 	increase := true
-	log.Infof("Breathing color: %06x", color)
+	log.Debugf("Breathing color: %06x", color)
 	tick := time.NewTicker(10 * time.Millisecond)
 	defer tick.Stop()
 	for {
