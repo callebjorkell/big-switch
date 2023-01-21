@@ -37,7 +37,7 @@ func (d mockEngine) Leds(_ int) []uint32 {
 func NewLedController() *LedController {
 	return &LedController{
 		ws: mockEngine{
-			colors: make([]uint32, ledCounts),
+			colors: make([]uint32, 1),
 		},
 	}
 }
