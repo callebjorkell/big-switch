@@ -7,43 +7,41 @@ import (
 	"github.com/callebjorkell/big-switch/internal/lcd"
 	"github.com/callebjorkell/big-switch/internal/neopixel"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
 
-var (
-	app     = kingpin.New("big-switch", "Big switch trigger")
-	debug   = app.Flag("debug", "Turn on debug logging.").Bool()
-	start   = app.Command("start", "Start the deployer")
-	version = app.Command("version", "Show current version.")
-)
+type colorFormatter struct {
+	log.TextFormatter
+}
+
+func (f *colorFormatter) Format(entry *log.Entry) ([]byte, error) {
+	var levelColor int
+	switch entry.Level {
+	case log.DebugLevel, log.TraceLevel:
+		levelColor = 90 // dark grey
+	case log.WarnLevel:
+		levelColor = 33 // yellow
+	case log.ErrorLevel, log.FatalLevel, log.PanicLevel:
+		levelColor = 91 // bright red
+	default:
+		levelColor = 39 // default
+	}
+	return []byte(fmt.Sprintf("\x1b[%dm%s\x1b[0m\n", levelColor, entry.Message)), nil
+}
 
 func main() {
-	cmd, err := app.Parse(os.Args[1:])
-	if err != nil {
-		fmt.Printf("%v: Try --help\n", err.Error())
-		os.Exit(1)
-	}
+	log.SetFormatter(&colorFormatter{})
 
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: "2006-01-02T15:04:05.000Z07:00",
-	})
-	if *debug {
-		log.Info("Enabling debug output...")
-		log.SetLevel(log.DebugLevel)
+	if err := RootCmd().Execute(); err != nil {
+		log.Fatal(err)
 	}
+}
 
-	switch cmd {
-	case start.FullCommand():
-		startServer()
-	case version.FullCommand():
-		showVersion()
-	default:
-		kingpin.FatalUsage("Unrecognized command")
-	}
+func encryptConfig(f string) {
+	log.Infof("Will try to encrypt %v", f)
 }
 
 func startServer() {
