@@ -6,6 +6,7 @@ import (
 	"github.com/callebjorkell/big-switch/internal/deploy"
 	"github.com/callebjorkell/big-switch/internal/lcd"
 	"github.com/callebjorkell/big-switch/internal/neopixel"
+	"github.com/callebjorkell/big-switch/internal/passphrase"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -52,6 +53,18 @@ func startServer() {
 	lcd.Reset()
 
 	led := neopixel.NewLedController()
+
+	p := passphrase.NewServer()
+	go p.Listen()
+
+	select {
+	case <-signalChan:
+		p.Close()
+		os.Exit(0)
+	case pass := <-p.PassChan():
+		log.Infof("got passphrase: %v", pass)
+		p.Close()
+	}
 
 	conf, err := readConfig()
 	if err != nil {
