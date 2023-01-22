@@ -17,6 +17,8 @@ update-deps:
 deps:
 	go mod download
 
+test-server: deps
+	go run ./cmd/test-server
 cross-pi: deps
 	docker buildx build --platform linux/arm/v6 --tag $(BIN)-$(VERSION) --output type=local,dest=./ --file docker/builder/Dockerfile .
 

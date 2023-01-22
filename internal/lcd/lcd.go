@@ -13,7 +13,7 @@ import (
 
 func init() {
 	if _, err := host.Init(); err != nil {
-		logrus.Fatalln("Unable to initialize periph:", err)
+		logrus.Fatalln("Unable to initialize periph: ", err)
 	}
 }
 

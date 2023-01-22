@@ -15,7 +15,7 @@ func (d mockEngine) Init() error {
 }
 
 func (d mockEngine) Render() error {
-	log.Debugf("Render colors: %#v", d.colors)
+	log.Tracef("Render colors: %#v", d.colors)
 	return nil
 }
 
