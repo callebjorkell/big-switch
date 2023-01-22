@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var pollingInterval = 30 * time.Second
+
 type ChangeEvent struct {
 	Service  string
 	Artifact string
@@ -52,7 +54,7 @@ func NewWatcher(baseUrl, token, caller string) *Watcher {
 func (w *Watcher) AddWatch(service, namespace string) error {
 	go func() {
 		log.Infof("Starting to watch %s", service)
-		t := time.NewTicker(10 * time.Second)
+		t := time.NewTicker(pollingInterval)
 		defer t.Stop()
 
 		for {
