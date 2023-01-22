@@ -3,7 +3,6 @@
 package neopixel
 
 import (
-	"fmt"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,18 +15,15 @@ func (d mockEngine) Init() error {
 }
 
 func (d mockEngine) Render() error {
-	fmt.Println("neopixel: Render")
-	log.Debugf("colors: %#v", d.colors)
+	log.Debugf("Render colors: %#v", d.colors)
 	return nil
 }
 
 func (d mockEngine) Wait() error {
-	fmt.Println("neopixel: Wait")
 	return nil
 }
 
 func (d mockEngine) Fini() {
-	fmt.Println("neopixel: Fini")
 }
 
 func (d mockEngine) Leds(_ int) []uint32 {

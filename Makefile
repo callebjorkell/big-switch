@@ -18,9 +18,10 @@ deps:
 	go mod download
 
 cross-pi: deps
-	GOOS=linux GOARCH=arm GOARM=6 go build -o $(BIN) -tags=pi,arm -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" $(PACKAGE)
+	docker buildx build --platform linux/arm/v6 --tag $(BIN)-$(VERSION) --output type=local,dest=./ --file docker/builder/Dockerfile .
 
 pi: deps
+	# GOOS=linux GOARCH=arm GOARM=6
 	go build -o $(BIN) -tags=pi -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" $(PACKAGE)
 
 run:
