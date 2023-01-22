@@ -122,8 +122,7 @@ func startServer(encryptedConfig bool) {
 
 	conf, err := readConfig(ctx, encryptedConfig)
 	if err != nil {
-		lcd.Println(lcd.Line1, "Unable to start!")
-		lcd.Clear(lcd.Line2)
+		lcd.Print("Failed to start!", "")
 		log.Error(err)
 		led.Flash(neopixel.ColorRed)
 		return
@@ -169,8 +168,7 @@ func startServer(encryptedConfig bool) {
 			case e := <-checker.Changes():
 				log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
 				led.Breathe(colors[e.Service])
-				lcd.Println(lcd.Line1, "Press to deploy!")
-				lcd.Println(lcd.Line2, lcd.Center(e.Service))
+				lcd.Print("Press to deploy!", e.Service)
 
 				select {
 				case confirmed := <-confirm:
@@ -179,7 +177,7 @@ func startServer(encryptedConfig bool) {
 						err := fmt.Errorf("TODO: Implement me")
 						if err != nil {
 							log.Warn("Unable to trigger deploy: ", err)
-							lcd.Println(lcd.Line1, lcd.Center("TRIGGER FAILED"))
+							lcd.Print("TRIGGER FAILED", "")
 							led.Flash(neopixel.ColorRed)
 							<-time.After(5 * time.Second)
 						}
@@ -195,11 +193,10 @@ func startServer(encryptedConfig bool) {
 	}()
 
 	lcd.Reset()
-	lcd.Println(lcd.Line2, lcd.Center("Started..."))
+	lcd.Println(lcd.Line2, lcd.Center("running"))
 	<-ctx.Done()
 
-	lcd.Println(lcd.Line1, lcd.Center("Sleeping..."))
-	lcd.Clear(lcd.Line2)
+	lcd.ClearAll()
 
 	log.Info("Done...")
 }

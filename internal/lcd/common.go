@@ -54,11 +54,16 @@ func Center(msg string) string {
 }
 
 func Reset() {
-	Println(Line1, "Awesome Deployer")
+	Println(Line1, "Surveyor deploy")
 	Clear(Line2)
 }
 
 func ClearAll() {
 	Clear(Line1)
 	Clear(Line2)
+}
+
+func Print(line1, line2 string) {
+	Println(Line1, Center(line1))
+	Println(Line2, Center(line2))
 }
