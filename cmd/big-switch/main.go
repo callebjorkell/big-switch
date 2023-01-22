@@ -125,6 +125,7 @@ func startServer(encryptedConfig bool) {
 		lcd.Println(lcd.Line1, "Unable to start!")
 		lcd.Clear(lcd.Line2)
 		log.Error(err)
+		led.Flash(neopixel.ColorRed)
 		return
 	}
 
