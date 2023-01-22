@@ -16,7 +16,7 @@ type ChangeEvent struct {
 	Artifact string
 }
 
-type Checker struct {
+type Watcher struct {
 	Token      string
 	BaseUrl    *url.URL
 	Caller     string
@@ -25,21 +25,21 @@ type Checker struct {
 	stopper    sync.Once
 }
 
-func (c *Checker) Changes() <-chan ChangeEvent {
-	return c.changes
+func (w *Watcher) Changes() <-chan ChangeEvent {
+	return w.changes
 }
 
-func (c *Checker) Close() error {
-	c.stopper.Do(func() {
-		close(c.killSwitch)
+func (w *Watcher) Close() error {
+	w.stopper.Do(func() {
+		close(w.killSwitch)
 	})
 	return nil
 }
 
-func NewChecker(baseUrl, token, caller string) *Checker {
+func NewWatcher(baseUrl, token, caller string) *Watcher {
 	log.Debug("Initializing the checker...")
 	u, _ := url.Parse(baseUrl)
-	c := Checker{
+	c := Watcher{
 		Token:   token,
 		BaseUrl: u,
 		Caller:  caller,
@@ -49,7 +49,7 @@ func NewChecker(baseUrl, token, caller string) *Checker {
 	return &c
 }
 
-func (c *Checker) AddWatch(service, namespace string) error {
+func (w *Watcher) AddWatch(service, namespace string) error {
 	go func() {
 		log.Infof("Starting to watch %s", service)
 		t := time.NewTicker(10 * time.Second)
@@ -59,13 +59,13 @@ func (c *Checker) AddWatch(service, namespace string) error {
 			select {
 			case <-t.C:
 				// fall out of the select and do the work.
-			case <-c.killSwitch:
+			case <-w.killSwitch:
 				log.Infof("Kill switch flipped. Stopping watch of %s", service)
-				close(c.changes)
+				close(w.changes)
 				return
 			}
 
-			a, err := c.GetArtifacts(service, namespace)
+			a, err := w.GetArtifacts(service, namespace)
 			if err != nil {
 				log.Warnf("error when watching %s: %v", service, err)
 				continue
@@ -77,7 +77,7 @@ func (c *Checker) AddWatch(service, namespace string) error {
 				if a.Prod.Time > a.Dev.Time {
 					log.Debugf("%s prod is newer than dev (%v later than %v). Not offering deploy.", service, a.Prod.Time, a.Dev.Time)
 				}
-				c.changes <- ChangeEvent{
+				w.changes <- ChangeEvent{
 					Service:  a.Service,
 					Artifact: a.Prod.Name,
 				}
@@ -106,7 +106,7 @@ type statusPayload struct {
 	} `json:"environments"`
 }
 
-func (c *Checker) GetArtifacts(service, namespace string) (Artifacts, error) {
+func (w *Watcher) GetArtifacts(service, namespace string) (Artifacts, error) {
 	const timeLayout = "2006-01-02 15:04:05"
 
 	values := url.Values{}
@@ -114,14 +114,14 @@ func (c *Checker) GetArtifacts(service, namespace string) (Artifacts, error) {
 	if namespace != "" {
 		values.Add("namespace", namespace)
 	}
-	u := c.BaseUrl.JoinPath("status")
+	u := w.BaseUrl.JoinPath("status")
 	u.RawQuery = values.Encode()
 	r, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return Artifacts{}, err
 	}
-	r.Header.Set("Authorization", fmt.Sprintf("Bearer %v", c.Token))
-	r.Header.Set("X-Caller-Email", c.Caller)
+	r.Header.Set("Authorization", fmt.Sprintf("Bearer %v", w.Token))
+	r.Header.Set("X-Caller-Email", w.Caller)
 	r.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(r)

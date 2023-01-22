@@ -3,15 +3,16 @@ package deploy
 import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"net/url"
 	"testing"
 	"time"
 )
 
 func TestWatch(t *testing.T) {
 	setDebug()
-
-	c := Checker{Token: "tok"}
-	err := c.AddWatch("fraud-screening")
+	u, _ := url.Parse("http://localhost")
+	c := Watcher{Token: "tok", BaseUrl: u}
+	err := c.AddWatch("some-service", "prod")
 
 	<-time.After(60 * time.Second)
 	e := <-c.changes
