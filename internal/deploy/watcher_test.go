@@ -61,7 +61,8 @@ func TestWatch(t *testing.T) {
 	}
 	s := httptest.NewServer(http.HandlerFunc(handler))
 
-	w := NewWatcher(s.URL, "arst", "me@local.com")
+	c := NewClient(s.URL, "arst", "me@local.com")
+	w := NewWatcher(c)
 	defer w.Close()
 	err = w.AddWatch("some-service", "prod")
 	assert.NoError(t, err)

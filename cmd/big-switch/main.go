@@ -128,7 +128,8 @@ func startServer(encryptedConfig bool) {
 		return
 	}
 
-	checker := deploy.NewWatcher(conf.ReleaseManager.Url, conf.ReleaseManager.Token, conf.ReleaseManager.Caller)
+	watcherClient := deploy.NewClient(conf.ReleaseManager.Url, conf.ReleaseManager.Token, conf.ReleaseManager.Caller)
+	checker := deploy.NewWatcher(watcherClient)
 
 	for _, service := range conf.Services {
 		checker.AddWatch(service.Name, service.Namespace)

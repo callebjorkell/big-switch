@@ -1,13 +1,8 @@
 package deploy
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
 	log "github.com/sirupsen/logrus"
-	"io"
-	"net/http"
-	"net/url"
-	"sync"
 	"time"
 )
 
@@ -19,12 +14,11 @@ type ChangeEvent struct {
 }
 
 type Watcher struct {
-	Token      string
-	BaseUrl    *url.URL
 	Caller     string
-	killSwitch chan struct{}
+	killSwitch func()
+	ctx        context.Context
 	changes    chan ChangeEvent
-	stopper    sync.Once
+	client     *Client
 }
 
 func (w *Watcher) Changes() <-chan ChangeEvent {
@@ -32,22 +26,20 @@ func (w *Watcher) Changes() <-chan ChangeEvent {
 }
 
 func (w *Watcher) Close() error {
-	w.stopper.Do(func() {
-		close(w.killSwitch)
-	})
+	w.killSwitch()
 	return nil
 }
 
-func NewWatcher(baseUrl, token, caller string) *Watcher {
+func NewWatcher(client *Client) *Watcher {
 	log.Debug("Initializing the checker...")
-	u, _ := url.Parse(baseUrl)
+	ctx, cancel := context.WithCancel(context.Background())
 	c := Watcher{
-		Token:   token,
-		BaseUrl: u,
-		Caller:  caller,
+		ctx:        ctx,
+		killSwitch: cancel,
+		client:     client,
 	}
 	c.changes = make(chan ChangeEvent, 10)
-	c.killSwitch = make(chan struct{})
+
 	return &c
 }
 
@@ -61,8 +53,8 @@ func (w *Watcher) AddWatch(service, namespace string) error {
 			select {
 			case <-t.C:
 				// fall out of the select and do the work.
-			case <-w.killSwitch:
-				log.Infof("Kill switch flipped. Stopping watch of %s", service)
+			case <-w.ctx.Done():
+				log.Infof("Stopping watch of %s", service)
 				close(w.changes)
 				return
 			}
@@ -109,35 +101,13 @@ type statusPayload struct {
 }
 
 func (w *Watcher) GetArtifacts(service, namespace string) (Artifacts, error) {
-	const timeLayout = "2006-01-02 15:04:05"
-
-	values := url.Values{}
-	values.Add("service", service)
-	if namespace != "" {
-		values.Add("namespace", namespace)
-	}
-	u := w.BaseUrl.JoinPath("status")
-	u.RawQuery = values.Encode()
-	r, err := http.NewRequest("GET", u.String(), nil)
+	req, err := w.client.NewStatusRequest(service, namespace)
 	if err != nil {
 		return Artifacts{}, err
 	}
-	r.Header.Set("Authorization", fmt.Sprintf("Bearer %v", w.Token))
-	r.Header.Set("X-Caller-Email", w.Caller)
-	r.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(r)
-	if err != nil {
-		return Artifacts{}, err
-	}
-	defer resp.Body.Close()
-
-	payload, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return Artifacts{}, err
-	}
 	status := statusPayload{}
-	err = json.Unmarshal(payload, &status)
+	w.client.Do(req, &status)
 	if err != nil {
 		return Artifacts{}, err
 	}
