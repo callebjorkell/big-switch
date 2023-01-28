@@ -50,9 +50,6 @@ func TestWatch(t *testing.T) {
 	tmpl, err := template.New("status").Parse(statusTemplate)
 	require.NoError(t, err)
 
-	// set polling to close to a single millisecond
-	pollingInterval = time.Millisecond
-
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		tmpl.Execute(w, statusData{
@@ -68,7 +65,7 @@ func TestWatch(t *testing.T) {
 	c := NewClient(s.URL, "arst", "me@local.com")
 	w := NewWatcher(c)
 	defer w.Close()
-	err = w.AddWatch("some-service", "prod")
+	err = w.AddWatch("some-service", "prod", time.Millisecond, 5*time.Millisecond)
 	assert.NoError(t, err)
 
 	select {
@@ -86,9 +83,6 @@ func TestWatch_OnlyReportsChangeOnce(t *testing.T) {
 	tmpl, err := template.New("status").Parse(statusTemplate)
 	require.NoError(t, err)
 
-	// set polling to close to a single millisecond
-	pollingInterval = time.Millisecond
-
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		tmpl.Execute(w, statusData{
@@ -104,7 +98,7 @@ func TestWatch_OnlyReportsChangeOnce(t *testing.T) {
 	c := NewClient(s.URL, "arst", "me@local.com")
 	w := NewWatcher(c)
 	defer w.Close()
-	err = w.AddWatch("some-service", "prod")
+	err = w.AddWatch("some-service", "prod", time.Millisecond, 5*time.Millisecond)
 	assert.NoError(t, err)
 
 	select {

@@ -19,6 +19,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -124,7 +125,9 @@ func startServer(encryptedConfig bool) {
 	promoter := deploy.NewPromoter(deployClient)
 
 	for _, service := range conf.Services {
-		watcher.AddWatch(service.Name, service.Namespace)
+		pollingInterval := time.Duration(service.PollingInterval) * time.Second
+		warmupDuration := time.Duration(service.WarmupDuration) * time.Second
+		watcher.AddWatch(service.Name, service.Namespace, pollingInterval, warmupDuration)
 	}
 
 	lcd.Reset()

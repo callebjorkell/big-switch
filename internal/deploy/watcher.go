@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-var pollingInterval = 30 * time.Second
-
 type ChangeEvent struct {
 	Service  string
 	Artifact string
@@ -44,12 +42,12 @@ func NewWatcher(client *Client) *Watcher {
 	return &c
 }
 
-func (w *Watcher) AddWatch(service, namespace string) error {
+func (w *Watcher) AddWatch(service, namespace string, pollingInterval, warmupDuration time.Duration) error {
 	go func() {
 		log.Infof("Starting to watch %s", service)
 		t := time.NewTicker(pollingInterval)
 		defer t.Stop()
-		lastProdArtifact := Artifact{}
+		lastDevArtifact := Artifact{}
 
 		for {
 			select {
@@ -68,13 +66,13 @@ func (w *Watcher) AddWatch(service, namespace string) error {
 			}
 
 			if a.IsProdBehind() {
-				if lastProdArtifact.Equals(a.Prod) {
-					log.Debugf("Have already seen current prod artifact for %s. Skipping.", service)
+				if lastDevArtifact.Equals(a.Dev) {
+					log.Debugf("Have already seen current dev artifact for %s. Skipping.", service)
 					continue
 				}
-				
+
 				log.Infof("%s prod (%s) differs from dev (%s)", service, a.Prod.Name, a.Dev.Name)
-				lastProdArtifact = a.Prod
+				lastDevArtifact = a.Dev
 
 				w.changes <- ChangeEvent{
 					Service:  a.Service,

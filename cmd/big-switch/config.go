@@ -5,6 +5,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	defaultPollingInterval = 30
+	defaultWarmupDuration  = 120
+)
+
 type Config struct {
 	ReleaseManager struct {
 		Url    string `yaml:"url"`
@@ -12,9 +17,11 @@ type Config struct {
 		Caller string `yaml:"caller"`
 	} `yaml:"releaseManager"`
 	Services []struct {
-		Name      string `yaml:"name"`
-		Namespace string `yaml:"namespace"`
-		Color     uint32 `yaml:"color"`
+		Name            string `yaml:"name"`
+		Namespace       string `yaml:"namespace"`
+		Color           uint32 `yaml:"color"`
+		WarmupDuration  int    `yaml:"warmupDuration"`
+		PollingInterval int    `yaml:"pollingInterval"`
 	} `yaml:"services"`
 }
 
@@ -48,6 +55,12 @@ func parseConfig(content []byte) (*Config, error) {
 		}
 		if service.Color == 0 {
 			return nil, fmt.Errorf("color of service must be specified for entry %d", i)
+		}
+		if service.PollingInterval <= 0 {
+			service.PollingInterval = defaultPollingInterval
+		}
+		if service.WarmupDuration <= 0 {
+			service.WarmupDuration = defaultWarmupDuration
 		}
 	}
 
