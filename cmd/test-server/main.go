@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"html/template"
 	"net/http"
@@ -21,25 +22,34 @@ var statusTemplate = `{
       "name": "dev",
       "tag": "{{ .DevArtifact }}",
       "committer": "GitHub",
-      "date": {{ .DevTime }}
+      "date": {{ .DevTime.UnixMilli }}
     },
     {
       "name": "prod",
       "tag": "{{ .ProdArtifact }}",
       "committer": "GitHub",
-      "date": {{ .ProdTime }}
+      "date": {{ .ProdTime.UnixMilli }}
     }
   ]
 }
 `
 
+var alreadyUpToTemplate = `{
+  "service": "{{ .Service }}",
+  "status": "Environment 'prod' is already up-to-date",
+  "toEnvironment":"prod"
+}`
+
 func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
+	handlers := NewHandlers()
+
 	log.Info("Starting release-manager test server at :9090")
 	server := http.Server{Addr: ":9090"}
-	http.HandleFunc("/status", statusHandler())
+	http.HandleFunc("/status", handlers.statusHandler)
+	http.HandleFunc("/release", handlers.promoteHandler)
 	log.Infof("Starting server on %v. Waiting for passphrase.", server.Addr)
 
 	go func() {
@@ -52,44 +62,66 @@ func main() {
 	server.ListenAndServe()
 }
 
-type statusData struct {
+type Handlers struct {
 	DevArtifact  string
-	DevTime      int64
+	DevTime      time.Time
 	ProdArtifact string
-	ProdTime     int64
+	ProdTime     time.Time
+	Service      string
+	lock         sync.Mutex
 }
 
-func statusHandler() func(w http.ResponseWriter, req *http.Request) {
-	prodTime := time.Now()
-	devTime := prodTime
-	l := sync.Mutex{}
+func NewHandlers() *Handlers {
+	now := time.Now()
 
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		tmpl, err := template.New("status").Parse(statusTemplate)
-		if err != nil {
-			w.WriteHeader(500)
-		}
-
-		l.Lock()
-		defer l.Unlock()
-		if prodTime.Add(3 * time.Minute).Before(time.Now()) {
-			prodTime = devTime
-		}
-		if devTime.Add(2 * time.Minute).Before(time.Now()) {
-			devTime = time.Now()
-		}
-		s := statusData{
-			ProdArtifact: "master-04169c5a19-a9c84eb8ff",
-			ProdTime:     prodTime.UnixMilli(),
-			DevTime:      devTime.UnixMilli(),
-		}
-		if prodTime.Equal(devTime) {
-			s.DevArtifact = s.ProdArtifact
-		} else {
-			s.DevArtifact = "master-6831b4ba23-5876ec33b0"
-		}
-
-		tmpl.Execute(w, s)
+	return &Handlers{
+		DevArtifact:  fmt.Sprintf("artifact-%d", now.Unix()),
+		DevTime:      now,
+		ProdArtifact: fmt.Sprintf("artifact-%d", now.Unix()),
+		ProdTime:     now,
+		Service:      "little-test-service",
+		lock:         sync.Mutex{},
 	}
+}
+
+func (h *Handlers) promoteHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	tmpl, err := template.New("promote").Parse(alreadyUpToTemplate)
+	if err != nil {
+		w.WriteHeader(500)
+	}
+
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	h.ProdTime = h.DevTime
+	h.ProdArtifact = h.DevArtifact
+
+	tmpl.Execute(w, h)
+}
+
+func (h *Handlers) statusHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	tmpl, err := template.New("status").Parse(statusTemplate)
+	if err != nil {
+		w.WriteHeader(500)
+	}
+
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	if h.DevTime.Add(2 * time.Minute).Before(time.Now()) {
+		h.DevTime = time.Now()
+		h.DevArtifact = fmt.Sprintf("artifact-%d", h.DevTime.Unix())
+	}
+
+	tmpl.Execute(w, h)
 }
