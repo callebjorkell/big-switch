@@ -33,7 +33,7 @@ test-server: deps
 cross-pi: deps
 	docker buildx build --platform linux/arm/v6 --tag $(BIN)-$(VERSION) --output type=local,dest=./ --file docker/builder/Dockerfile .
 
-pi: deps test vet fmt
+pi: deps
 	# GOOS=linux GOARCH=arm GOARM=6
 	go build -o $(BIN) -tags=pi -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" $(PACKAGE)
 

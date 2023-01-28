@@ -80,6 +80,45 @@ func TestWatch(t *testing.T) {
 	}
 }
 
+func TestWatch_OnlyReportsChangeOnce(t *testing.T) {
+	setDebug()
+
+	tmpl, err := template.New("status").Parse(statusTemplate)
+	require.NoError(t, err)
+
+	// set polling to close to a single millisecond
+	pollingInterval = time.Millisecond
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		tmpl.Execute(w, statusData{
+			DevArtifact:  "master-04169c5a19-a9c84eb8ff",
+			DevTime:      1674119917135,
+			ProdArtifact: "master-6831b4ba23-5876ec33b0",
+			ProdTime:     1674119916510,
+		})
+	}
+	s := httptest.NewServer(http.HandlerFunc(handler))
+	defer s.Close()
+
+	c := NewClient(s.URL, "arst", "me@local.com")
+	w := NewWatcher(c)
+	defer w.Close()
+	err = w.AddWatch("some-service", "prod")
+	assert.NoError(t, err)
+
+	select {
+	case <-w.Changes():
+		select {
+		case <-w.Changes():
+			t.Fatal("only a single change should have been produced")
+		case <-time.After(250 * time.Millisecond):
+		}
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("timed out waiting for change event")
+	}
+}
+
 func TestReleaseRequestBody(t *testing.T) {
 	c := NewClient("localhost", "arst", "me@local.com")
 	req, err := c.NewPromoteRequest("test-service", "the-dev-artifact")

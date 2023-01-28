@@ -102,9 +102,8 @@ func TestChangeListenerDeploying(t *testing.T) {
 }
 
 type NotifierMock struct {
-	alertFor                string
-	interactionChan         chan bool
-	success, failure, reset bool
+	alertFor        string
+	interactionChan chan bool
 }
 
 func NewNotifierMock() *NotifierMock {
@@ -127,20 +126,9 @@ func (n *NotifierMock) Alert(service string) {
 	n.interactionChan <- true
 }
 
-func (n *NotifierMock) Success() {
-	n.success = true
-	n.interactionChan <- true
-}
-
-func (n *NotifierMock) Failure() {
-	n.failure = true
-	n.interactionChan <- true
-}
-
-func (n *NotifierMock) Reset() {
-	n.reset = true
-	n.interactionChan <- true
-}
+func (n *NotifierMock) Success() {}
+func (n *NotifierMock) Failure() {}
+func (n *NotifierMock) Reset()   {}
 
 type PromoterMock struct {
 	retErr            error

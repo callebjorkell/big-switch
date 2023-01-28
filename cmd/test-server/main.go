@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"html/template"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/signal"
 	"sync"
@@ -50,7 +51,7 @@ func main() {
 	server := http.Server{Addr: ":9090"}
 	http.HandleFunc("/status", handlers.statusHandler)
 	http.HandleFunc("/release", handlers.promoteHandler)
-	log.Infof("Starting server on %v. Waiting for passphrase.", server.Addr)
+	log.Infof("Starting test-server on %v.", server.Addr)
 
 	go func() {
 		<-signalChan
@@ -90,6 +91,9 @@ func (h *Handlers) promoteHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	reqDump, _ := httputil.DumpRequest(req, true)
+	log.Debugf("serving promote request: %s", string(reqDump))
+
 	w.Header().Set("Content-Type", "application/json")
 	tmpl, err := template.New("promote").Parse(alreadyUpToTemplate)
 	if err != nil {
@@ -109,6 +113,9 @@ func (h *Handlers) statusHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	reqDump, _ := httputil.DumpRequest(req, true)
+	log.Debugf("serving status request: %s", string(reqDump))
 
 	w.Header().Set("Content-Type", "application/json")
 	tmpl, err := template.New("status").Parse(statusTemplate)

@@ -28,3 +28,7 @@ type Artifact struct {
 	Time int64  `json:"date"`
 	Name string `json:"tag"`
 }
+
+func (a Artifact) Equals(b Artifact) bool {
+	return a.Name == b.Name && a.Time == b.Time
+}

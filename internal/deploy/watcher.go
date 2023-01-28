@@ -49,6 +49,7 @@ func (w *Watcher) AddWatch(service, namespace string) error {
 		log.Infof("Starting to watch %s", service)
 		t := time.NewTicker(pollingInterval)
 		defer t.Stop()
+		lastProdArtifact := Artifact{}
 
 		for {
 			select {
@@ -67,7 +68,13 @@ func (w *Watcher) AddWatch(service, namespace string) error {
 			}
 
 			if a.IsProdBehind() {
+				if lastProdArtifact.Equals(a.Prod) {
+					log.Debugf("Have already seen current prod artifact for %s. Skipping.", service)
+					continue
+				}
+				
 				log.Infof("%s prod (%s) differs from dev (%s)", service, a.Prod.Name, a.Dev.Name)
+				lastProdArtifact = a.Prod
 
 				w.changes <- ChangeEvent{
 					Service:  a.Service,
