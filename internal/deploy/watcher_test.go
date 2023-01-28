@@ -49,7 +49,9 @@ func TestWatch(t *testing.T) {
 	tmpl, err := template.New("status").Parse(statusTemplate)
 	require.NoError(t, err)
 
-	pollingInterval = 10 * time.Millisecond
+	// set polling to close to a single millisecond
+	pollingInterval = time.Millisecond
+
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		tmpl.Execute(w, statusData{
@@ -67,10 +69,13 @@ func TestWatch(t *testing.T) {
 	err = w.AddWatch("some-service", "prod")
 	assert.NoError(t, err)
 
-	e := <-w.changes
-	assert.Equal(t, "some-service", e.Service)
-	assert.Equal(t, "master-6831b4ba23-5876ec33b0", e.Artifact)
-	log.Printf("Event: %v", e)
+	select {
+	case e := <-w.changes:
+		assert.Equal(t, "some-service", e.Service)
+		assert.Equal(t, "master-6831b4ba23-5876ec33b0", e.Artifact)
+	case <-time.After(50 * time.Millisecond):
+		t.Fatal("timed out waiting for change event")
+	}
 }
 
 func setDebug() {

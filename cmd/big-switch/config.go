@@ -18,6 +18,14 @@ type Config struct {
 	} `yaml:"services"`
 }
 
+func (c Config) ColorMap() map[string]uint32 {
+	colors := make(map[string]uint32)
+	for _, service := range c.Services {
+		colors[service.Name] = service.Color
+	}
+	return colors
+}
+
 func parseConfig(content []byte) (*Config, error) {
 	c := &Config{}
 	err := yaml.Unmarshal(content, c)
@@ -27,6 +35,12 @@ func parseConfig(content []byte) (*Config, error) {
 
 	if c.ReleaseManager.Token == "" {
 		return nil, fmt.Errorf("release manager token is missing")
+	}
+	if c.ReleaseManager.Url == "" {
+		return nil, fmt.Errorf("release manager URL is missing")
+	}
+	if c.ReleaseManager.Caller == "" {
+		return nil, fmt.Errorf("release manager caller is missing")
 	}
 	for i, service := range c.Services {
 		if len(service.Name) < 1 {

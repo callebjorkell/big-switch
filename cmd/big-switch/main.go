@@ -101,14 +101,8 @@ func decryptFile(file, pass string) ([]byte, error) {
 }
 
 func startServer(encryptedConfig bool) {
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := ContextWithCancelOnSignal()
 	defer cancel()
-	go func() {
-		<-signalChan
-		cancel()
-	}()
 
 	lcd.InitLCD()
 	lcd.Reset()
@@ -116,29 +110,55 @@ func startServer(encryptedConfig bool) {
 	led := neopixel.NewLedController()
 	defer led.Close()
 
-	go func() {
-		led.Rainbow()
-	}()
-
 	conf, err := readConfig(ctx, encryptedConfig)
 	if err != nil {
 		lcd.Print("Failed to start!", "")
-		log.Error(err)
 		led.Flash(neopixel.ColorRed)
+		log.Fatal(err)
 		return
 	}
 
-	watcherClient := deploy.NewClient(conf.ReleaseManager.Url, conf.ReleaseManager.Token, conf.ReleaseManager.Caller)
-	checker := deploy.NewWatcher(watcherClient)
+	go led.Rainbow()
 
+	watcherClient := deploy.NewClient(conf.ReleaseManager.Url, conf.ReleaseManager.Token, conf.ReleaseManager.Caller)
+	watcher := deploy.NewWatcher(watcherClient)
 	for _, service := range conf.Services {
-		checker.AddWatch(service.Name, service.Namespace)
+		watcher.AddWatch(service.Name, service.Namespace)
 	}
 
-	confirm := make(chan bool)
-	defer close(confirm)
+	lcd.Reset()
+	lcd.Println(lcd.Line2, lcd.Center("started"))
+
+	confirm := startConfirmChannel(ctx)
+	go changeListener(ctx, conf.ColorMap(), led, watcher.Changes(), confirm)
+
+	<-ctx.Done()
+	lcd.ClearAll()
+	log.Info("Done...")
+}
+
+// ContextWithCancelOnSignal creates a context that has an explicit cancel, as well as a cancel if a SIGTERM or SIGINT
+// is received by the application.
+func ContextWithCancelOnSignal() (context.Context, context.CancelFunc) {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
+		<-signalChan
+		cancel()
+	}()
+	return ctx, cancel
+}
+
+// startConfirmChannel creates a channel that will receive a boolean tick every time the button is pressed. The channel
+// will be closed when the context expires.
+func startConfirmChannel(ctx context.Context) <-chan bool {
+	confirm := make(chan bool)
+
+	go func() {
+		defer close(confirm)
 		events := button.InitButton()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -146,7 +166,7 @@ func startServer(encryptedConfig bool) {
 			case e := <-events:
 				log.Debugf("Event: %v", e)
 				if e.Pressed {
-					// non-blocking confirm. If the button is not armed, we do not care.
+					// non-blocking confirm. If nothing is listening to the tick, it will get lost.
 					select {
 					case confirm <- true:
 					default:
@@ -156,52 +176,50 @@ func startServer(encryptedConfig bool) {
 		}
 	}()
 
-	go func() {
-		colors := make(map[string]uint32)
-		for _, service := range conf.Services {
-			colors[service.Name] = service.Color
-		}
-
-		for {
-			select {
-			case <-ctx.Done():
-				break
-			case e := <-checker.Changes():
-				log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
-				led.Breathe(colors[e.Service])
-				lcd.Print("Press to deploy!", e.Service)
-
-				select {
-				case confirmed := <-confirm:
-					if confirmed {
-						// Do actual deploy here.
-						err := fmt.Errorf("TODO: Implement me")
-						if err != nil {
-							log.Warn("Unable to trigger deploy: ", err)
-							lcd.Print("TRIGGER FAILED", "")
-							led.Flash(neopixel.ColorRed)
-							<-time.After(5 * time.Second)
-						}
-						led.Flash(0x00ff00)
-					}
-				case <-time.After(45 * time.Second):
-					log.Info("Confirmation timed out.")
-				}
-				lcd.Reset()
-				led.Stop()
-			}
-		}
-	}()
-
-	lcd.Reset()
-	lcd.Println(lcd.Line2, lcd.Center("running"))
-	<-ctx.Done()
-
-	lcd.ClearAll()
-
-	log.Info("Done...")
+	return confirm
 }
 
+func changeListener(
+	ctx context.Context,
+	colors map[string]uint32,
+	led *neopixel.LedController,
+	changes <-chan deploy.ChangeEvent,
+	confirm <-chan bool,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			break
+		case e := <-changes:
+			log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
+			led.Breathe(colors[e.Service])
+			lcd.Print("Press to deploy!", e.Service)
+
+			select {
+			case confirmed := <-confirm:
+				if confirmed {
+					// Do actual deploy here.
+					err := fmt.Errorf("TODO: Implement me")
+					if err != nil {
+						log.Warn("Unable to trigger deploy: ", err)
+						lcd.Print("TRIGGER FAILED", "")
+						led.Flash(neopixel.ColorRed)
+						<-time.After(5 * time.Second)
+					}
+					led.Flash(0x00ff00)
+				}
+			case <-time.After(45 * time.Second):
+				log.Info("Confirmation timed out.")
+			}
+			lcd.Reset()
+			led.Stop()
+		}
+	}
+}
+
+// readConfig will open the config and return the parsed Config struct. If the config is encrypted, a small web server
+// will be spawned to take the passphrase as input in order to decrypt the config file on disk. The function will block
+// until a passphrase is input in this case.
 func readConfig(ctx context.Context, encrypted bool) (*Config, error) {
 	const configFile = "config.yaml"
 	const encryptedConfigFile = "config.yaml.enc"
