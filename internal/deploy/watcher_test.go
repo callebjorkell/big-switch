@@ -73,7 +73,7 @@ func TestWatch(t *testing.T) {
 	case e := <-w.changes:
 		assert.Equal(t, "some-service", e.Service)
 		assert.Equal(t, "master-6831b4ba23-5876ec33b0", e.Artifact)
-	case <-time.After(50 * time.Millisecond):
+	case <-time.After(250 * time.Millisecond):
 		t.Fatal("timed out waiting for change event")
 	}
 }

@@ -6,6 +6,7 @@ import (
 )
 
 func TestColor(t *testing.T) {
+	t.Skip("used for manual testing")
 	tt := []struct {
 		name   string
 		input  uint32
