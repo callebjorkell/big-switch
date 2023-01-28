@@ -6,9 +6,19 @@ TIME:=$(shell date -u -Iseconds)
 BIN:=big-switch
 PACKAGE:=./cmd/big-switch
 
-.PHONY: dev pi deps update-deps
-dev: deps
+.PHONY: dev cross-pi pi deps update-deps vet test-server fmt test
+
+dev: test vet deps fmt
 	go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" -o $(BIN) $(PACKAGE)
+
+test: deps vet
+	go test ./...
+
+fmt:
+	test -z $(shell gofmt -l .)
+
+vet:
+	go vet ./...
 
 update-deps:
 	go get -u ./...
@@ -19,10 +29,11 @@ deps:
 
 test-server: deps
 	go run ./cmd/test-server
+
 cross-pi: deps
 	docker buildx build --platform linux/arm/v6 --tag $(BIN)-$(VERSION) --output type=local,dest=./ --file docker/builder/Dockerfile .
 
-pi: deps
+pi: deps test vet fmt
 	# GOOS=linux GOARCH=arm GOARM=6
 	go build -o $(BIN) -tags=pi -ldflags "-X main.buildVersion=$(VERSION) -X main.buildTime=$(TIME)" $(PACKAGE)
 
