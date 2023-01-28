@@ -47,7 +47,8 @@ func (w *Watcher) AddWatch(service, namespace string, pollingInterval, warmupDur
 		log.Infof("Starting to watch %s", service)
 		t := time.NewTicker(pollingInterval)
 		defer t.Stop()
-		lastDevArtifact := Artifact{}
+		lastAlertedArtifact := Artifact{}
+		cold := true
 
 		for {
 			select {
@@ -65,19 +66,27 @@ func (w *Watcher) AddWatch(service, namespace string, pollingInterval, warmupDur
 				continue
 			}
 
+			if lastAlertedArtifact.Equals(a.Dev) {
+				log.Debugf("Have already seen current dev artifact for %s. Skipping.", service)
+				continue
+			}
+
 			if a.IsProdBehind() {
-				if lastDevArtifact.Equals(a.Dev) {
-					log.Debugf("Have already seen current dev artifact for %s. Skipping.", service)
+				if cold {
+					log.Infof("warming up deploy for %s (%v)", service, warmupDuration)
+					<-time.After(warmupDuration)
+					cold = false
 					continue
 				}
 
 				log.Infof("%s prod (%s) differs from dev (%s)", service, a.Prod.Name, a.Dev.Name)
-				lastDevArtifact = a.Dev
+				lastAlertedArtifact = a.Dev
 
 				w.changes <- ChangeEvent{
 					Service:  a.Service,
-					Artifact: a.Prod.Name,
+					Artifact: a.Dev.Name,
 				}
+				cold = true
 			}
 		}
 	}()
