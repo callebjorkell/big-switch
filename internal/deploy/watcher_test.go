@@ -38,9 +38,9 @@ var statusTemplate = `{
 
 type statusData struct {
 	DevArtifact  string
-	DevTime      int
+	DevTime      int64
 	ProdArtifact string
-	ProdTime     int
+	ProdTime     int64
 }
 
 func TestWatch(t *testing.T) {
