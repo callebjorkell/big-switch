@@ -7,9 +7,9 @@ import (
 
 func TestColor(t *testing.T) {
 	tt := []struct {
-		name string
-		input uint32
-		light uint32
+		name   string
+		input  uint32
+		light  uint32
 		output uint32
 	}{
 		{
