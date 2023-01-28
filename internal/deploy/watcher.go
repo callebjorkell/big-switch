@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"context"
+	"github.com/callebjorkell/big-switch/internal/lcd"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -79,43 +80,14 @@ func (w *Watcher) AddWatch(service, namespace string) error {
 	return nil
 }
 
-type Artifacts struct {
-	Service string
-	Prod    Artifact
-	Dev     Artifact
-}
-
-func (a Artifacts) IsProdBehind() bool {
-	if a.Prod.Name == "" {
-		return false
-	}
-	if a.Prod.Name == a.Dev.Name {
-		return false
-	}
-
-	if a.Prod.Time == 0 {
-		return false
-	}
-	if a.Prod.Time <= a.Dev.Time {
-		return false
-	}
-
-	return true
-}
-
-type Artifact struct {
-	Time int64  `json:"date"`
-	Name string `json:"tag"`
-}
-
-type statusPayload struct {
-	Environments []struct {
-		Artifact
-		Environment string `json:"name"`
-	} `json:"environments"`
-}
-
 func (w *Watcher) GetArtifacts(service, namespace string) (Artifacts, error) {
+	type statusPayload struct {
+		Environments []struct {
+			Artifact
+			Environment string `json:"name"`
+		} `json:"environments"`
+	}
+
 	req, err := w.client.NewStatusRequest(service, namespace)
 	if err != nil {
 		return Artifacts{}, err
@@ -142,4 +114,52 @@ func (w *Watcher) GetArtifacts(service, namespace string) (Artifacts, error) {
 
 	log.Debug(a)
 	return a, nil
+}
+
+type Notifier interface {
+	Alert(service string)
+	Success()
+	Failure()
+	Reset()
+}
+
+type Deployer interface {
+	Promote(service, artifact string) error
+}
+
+func ChangeListener(
+	ctx context.Context,
+	notifier Notifier,
+	promoter Deployer,
+	changes <-chan ChangeEvent,
+	confirm <-chan bool,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			break
+		case e := <-changes:
+			log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
+			notifier.Alert(e.Service)
+
+			select {
+			case confirmed := <-confirm:
+				if confirmed {
+					log.Infof("Promoting %s for service %s to production.", e.Artifact, e.Service)
+					err := promoter.Promote(e.Service, e.Artifact)
+					if err != nil {
+						log.Warn("Unable to trigger deploy: ", err)
+						lcd.Print("TRIGGER FAILED", "")
+						notifier.Failure()
+						<-time.After(5 * time.Second)
+					} else {
+						notifier.Success()
+					}
+				}
+			case <-time.After(45 * time.Second):
+				log.Info("Confirmation timed out.")
+			}
+			notifier.Reset()
+		}
+	}
 }

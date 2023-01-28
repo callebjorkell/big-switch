@@ -19,7 +19,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -120,8 +119,10 @@ func startServer(encryptedConfig bool) {
 
 	go led.Rainbow()
 
-	watcherClient := deploy.NewClient(conf.ReleaseManager.Url, conf.ReleaseManager.Token, conf.ReleaseManager.Caller)
-	watcher := deploy.NewWatcher(watcherClient)
+	deployClient := deploy.NewClient(conf.ReleaseManager.Url, conf.ReleaseManager.Token, conf.ReleaseManager.Caller)
+	watcher := deploy.NewWatcher(deployClient)
+	promoter := deploy.NewPromoter(deployClient)
+
 	for _, service := range conf.Services {
 		watcher.AddWatch(service.Name, service.Namespace)
 	}
@@ -129,8 +130,10 @@ func startServer(encryptedConfig bool) {
 	lcd.Reset()
 	lcd.Println(lcd.Line2, lcd.Center("started"))
 
+	notifier := &LedNotifier{led: led, colorMap: conf.ColorMap()}
+
 	confirm := startConfirmChannel(ctx)
-	go changeListener(ctx, conf.ColorMap(), led, watcher.Changes(), confirm)
+	go deploy.ChangeListener(ctx, notifier, promoter, watcher.Changes(), confirm)
 
 	<-ctx.Done()
 	lcd.ClearAll()
@@ -179,44 +182,6 @@ func startConfirmChannel(ctx context.Context) <-chan bool {
 	return confirm
 }
 
-func changeListener(
-	ctx context.Context,
-	colors map[string]uint32,
-	led *neopixel.LedController,
-	changes <-chan deploy.ChangeEvent,
-	confirm <-chan bool,
-) {
-	for {
-		select {
-		case <-ctx.Done():
-			break
-		case e := <-changes:
-			log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
-			led.Breathe(colors[e.Service])
-			lcd.Print("Press to deploy!", e.Service)
-
-			select {
-			case confirmed := <-confirm:
-				if confirmed {
-					// Do actual deploy here.
-					err := fmt.Errorf("TODO: Implement me")
-					if err != nil {
-						log.Warn("Unable to trigger deploy: ", err)
-						lcd.Print("TRIGGER FAILED", "")
-						led.Flash(neopixel.ColorRed)
-						<-time.After(5 * time.Second)
-					}
-					led.Flash(0x00ff00)
-				}
-			case <-time.After(45 * time.Second):
-				log.Info("Confirmation timed out.")
-			}
-			lcd.Reset()
-			led.Stop()
-		}
-	}
-}
-
 // readConfig will open the config and return the parsed Config struct. If the config is encrypted, a small web server
 // will be spawned to take the passphrase as input in order to decrypt the config file on disk. The function will block
 // until a passphrase is input in this case.
@@ -249,4 +214,32 @@ func readConfig(ctx context.Context, encrypted bool) (*Config, error) {
 		}
 		return parseConfig(fileContent)
 	}
+}
+
+type LedNotifier struct {
+	led      *neopixel.LedController
+	colorMap map[string]uint32
+}
+
+func (l *LedNotifier) Alert(service string) {
+	lcd.Print("Press to deploy!", service)
+
+	color, ok := l.colorMap[service]
+	if !ok {
+		color = 0x0000FF
+	}
+	l.led.Breathe(color)
+}
+
+func (l *LedNotifier) Success() {
+	l.led.Flash(neopixel.ColorGreen)
+}
+
+func (l *LedNotifier) Failure() {
+	l.led.Flash(neopixel.ColorRed)
+}
+
+func (l *LedNotifier) Reset() {
+	lcd.Reset()
+	l.led.Stop()
 }

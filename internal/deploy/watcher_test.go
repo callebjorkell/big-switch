@@ -63,6 +63,7 @@ func TestWatch(t *testing.T) {
 		})
 	}
 	s := httptest.NewServer(http.HandlerFunc(handler))
+	defer s.Close()
 
 	c := NewClient(s.URL, "arst", "me@local.com")
 	w := NewWatcher(c)
@@ -71,7 +72,7 @@ func TestWatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	select {
-	case e := <-w.changes:
+	case e := <-w.Changes():
 		assert.Equal(t, "some-service", e.Service)
 		assert.Equal(t, "master-6831b4ba23-5876ec33b0", e.Artifact)
 	case <-time.After(250 * time.Millisecond):

@@ -35,7 +35,9 @@ func (c *Client) Do(r *http.Request, responseBody any) error {
 		return err
 	}
 	defer resp.Body.Close()
-
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("received response code %v from release manager", resp.StatusCode)
+	}
 	if responseBody == nil {
 		return nil
 	}

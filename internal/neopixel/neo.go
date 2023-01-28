@@ -9,6 +9,7 @@ const (
 	brightness = 250
 	ledCounts  = 24
 	ColorRed   = 0xFF0000
+	ColorGreen = 0x00FF00
 )
 
 type wsEngine interface {
