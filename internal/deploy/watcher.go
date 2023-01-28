@@ -65,12 +65,9 @@ func (w *Watcher) AddWatch(service, namespace string) error {
 				continue
 			}
 
-			if a.Dev.Name != a.Prod.Name {
-				log.Debugf("%s prod (%s) differs from dev (%s)", service, a.Prod.Name, a.Dev.Name)
+			if a.IsProdBehind() {
+				log.Infof("%s prod (%s) differs from dev (%s)", service, a.Prod.Name, a.Dev.Name)
 
-				if a.Prod.Time > a.Dev.Time {
-					log.Debugf("%s prod is newer than dev (%v later than %v). Not offering deploy.", service, a.Prod.Time, a.Dev.Time)
-				}
 				w.changes <- ChangeEvent{
 					Service:  a.Service,
 					Artifact: a.Prod.Name,
@@ -86,6 +83,24 @@ type Artifacts struct {
 	Service string
 	Prod    Artifact
 	Dev     Artifact
+}
+
+func (a Artifacts) IsProdBehind() bool {
+	if a.Prod.Name == "" {
+		return false
+	}
+	if a.Prod.Name == a.Dev.Name {
+		return false
+	}
+
+	if a.Prod.Time == 0 {
+		return false
+	}
+	if a.Prod.Time <= a.Dev.Time {
+		return false
+	}
+
+	return true
 }
 
 type Artifact struct {

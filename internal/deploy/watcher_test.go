@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"html/template"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -76,6 +77,16 @@ func TestWatch(t *testing.T) {
 	case <-time.After(250 * time.Millisecond):
 		t.Fatal("timed out waiting for change event")
 	}
+}
+
+func TestReleaseRequestBody(t *testing.T) {
+	c := NewClient("localhost", "arst", "me@local.com")
+	req, err := c.NewPromoteRequest("test-service", "the-dev-artifact")
+
+	require.NoError(t, err)
+	require.NotNil(t, req)
+	body, _ := io.ReadAll(req.Body)
+	require.Equal(t, `{"service":"test-service","environment":"prod","artifactId":"the-dev-artifact","committerName":"Surveyor deployer","committerEmail":"me@local.com","intent":{"type":"Promote","promote":{"fromEnvironment":"dev"}}}`, string(body))
 }
 
 func setDebug() {
