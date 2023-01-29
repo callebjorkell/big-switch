@@ -57,10 +57,10 @@ func parseConfig(content []byte) (*Config, error) {
 			return nil, fmt.Errorf("color of service must be specified for entry %d", i)
 		}
 		if service.PollingInterval <= 0 {
-			service.PollingInterval = defaultPollingInterval
+			c.Services[i].PollingInterval = defaultPollingInterval
 		}
 		if service.WarmupDuration <= 0 {
-			service.WarmupDuration = defaultWarmupDuration
+			c.Services[i].WarmupDuration = defaultWarmupDuration
 		}
 	}
 
