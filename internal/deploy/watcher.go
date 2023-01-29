@@ -74,7 +74,7 @@ func (w *Watcher) AddWatch(service, namespace string, pollingInterval, warmupDur
 				}
 
 				if a.IsProdBehind() {
-					log.Infof("Warming up deploy for %s (%v)", service, warmupDuration)
+					log.Infof("Warming up deploy %v for artifacts %+v", warmupDuration, a)
 					warmupArtifact = a.Dev
 					<-time.After(warmupDuration)
 					cold = false
@@ -134,7 +134,6 @@ func (w *Watcher) GetArtifacts(service, namespace string) (Artifacts, error) {
 		}
 	}
 
-	log.Debug(a)
 	return a, nil
 }
 
