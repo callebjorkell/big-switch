@@ -113,6 +113,48 @@ func TestWatch_OnlyReportsChangeOnce(t *testing.T) {
 	}
 }
 
+func TestWatch_AbandonHotAfterExternalChange(t *testing.T) {
+	setDebug()
+
+	tmpl, err := template.New("status").Parse(statusTemplate)
+	require.NoError(t, err)
+
+	firstSent := false
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		data := statusData{
+			DevArtifact:  "master-04169c5a19-a9c84eb8ff",
+			DevTime:      1674119917135,
+			ProdArtifact: "master-6831b4ba23-5876ec33b0",
+			ProdTime:     1674119916510,
+		}
+
+		if firstSent {
+			data.ProdArtifact = data.DevArtifact
+			data.ProdTime = data.DevTime
+		}
+
+		firstSent = true
+		tmpl.Execute(w, data)
+	}
+
+	s := httptest.NewServer(http.HandlerFunc(handler))
+	defer s.Close()
+
+	c := NewClient(s.URL, "arst", "me@local.com")
+	w := NewWatcher(c)
+	defer w.Close()
+	err = w.AddWatch("some-service", "prod", time.Millisecond, 5*time.Millisecond)
+	assert.NoError(t, err)
+
+	select {
+	case <-w.Changes():
+		t.Fatal("timed out waiting for change event")
+	case <-time.After(250 * time.Millisecond):
+		// no change is expected here.
+	}
+}
+
 func TestReleaseRequestBody(t *testing.T) {
 	c := NewClient("localhost", "arst", "me@local.com")
 	req, err := c.NewPromoteRequest("test-service", "the-dev-artifact")

@@ -7,21 +7,25 @@ type Artifacts struct {
 }
 
 func (a Artifacts) IsProdBehind() bool {
-	if a.Prod.Name == "" {
+	if a.Prod.Name == "" || a.Prod.Time == 0 {
+		// nothing currently deployed in prod
 		return false
 	}
 	if a.Prod.Name == a.Dev.Name {
+		// same artifact in dev and prod
 		return false
 	}
 
-	if a.Prod.Time == 0 {
-		return false
-	}
 	if a.Prod.Time >= a.Dev.Time {
+		// prod is ahead of dev
 		return false
 	}
 
 	return true
+}
+
+func (a Artifacts) EnvironmentsMatch() bool {
+	return a.Prod.Equals(a.Dev)
 }
 
 type Artifact struct {

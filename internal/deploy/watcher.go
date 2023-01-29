@@ -47,7 +47,8 @@ func (w *Watcher) AddWatch(service, namespace string, pollingInterval, warmupDur
 		log.Infof("Starting to watch %s", service)
 		t := time.NewTicker(pollingInterval)
 		defer t.Stop()
-		lastAlertedArtifact := Artifact{}
+		lastHotArtifact := Artifact{}
+		warmupArtifact := Artifact{}
 		cold := true
 
 		for {
@@ -66,28 +67,35 @@ func (w *Watcher) AddWatch(service, namespace string, pollingInterval, warmupDur
 				continue
 			}
 
-			if lastAlertedArtifact.Equals(a.Dev) {
-				log.Debugf("Have already seen current dev artifact for %s. Skipping.", service)
-				continue
-			}
+			if cold {
+				if lastHotArtifact.Equals(a.Dev) {
+					log.Debugf("Have already seen current dev artifact for %s. Skipping.", service)
+					continue
+				}
 
-			if a.IsProdBehind() {
-				if cold {
-					log.Infof("warming up deploy for %s (%v)", service, warmupDuration)
+				if a.IsProdBehind() {
+					log.Infof("Warming up deploy for %s (%v)", service, warmupDuration)
+					warmupArtifact = a.Dev
 					<-time.After(warmupDuration)
 					cold = false
 					continue
 				}
+			}
 
-				log.Infof("%s prod (%s) differs from dev (%s)", service, a.Prod.Name, a.Dev.Name)
-				lastAlertedArtifact = a.Dev
+			if warmupArtifact.Equals(a.Dev) && a.IsProdBehind() {
+				log.Infof("Sending event for possible upgrade of %s prod (%s) to dev artifact (%s)", service, a.Prod.Name, a.Dev.Name)
 
 				w.changes <- ChangeEvent{
 					Service:  a.Service,
 					Artifact: a.Dev.Name,
 				}
-				cold = true
 			}
+
+			// regardless of if the change was actually sent or not, we were in the hot state, and should record both
+			// lastHotArtifact, and move back to the cold state. Either the change event was sent, or then the state
+			// of dev/prod changed.
+			lastHotArtifact = warmupArtifact
+			cold = true
 		}
 	}()
 
