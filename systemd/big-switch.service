@@ -1,0 +1,14 @@
+[Unit]
+Description=Big switch releaser
+After=network.target
+
+[Service]
+ExecStart=/opt/big-switch/big-switch start
+WorkingDirectory=/opt/big-switch
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

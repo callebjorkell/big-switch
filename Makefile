@@ -39,3 +39,10 @@ pi: deps
 
 run:
 	go run $(PACKAGE) start
+
+install: pi
+	mkdir -p /opt/big-switch
+	cp ./big-switch /opt/big-switch
+	cp ./systemd/big-switch.service /etc/systemd/system/
+	systemctl enable big-switch.service
+	systemctl daemon-reload
