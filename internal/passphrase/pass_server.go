@@ -60,6 +60,9 @@ func (p *Server) showCurrentIP() {
 		if ip != "unknown address" {
 			break
 		}
+		if i == 0 {
+			lcd.Print("Awaiting network", "")
+		}
 		<-time.After(6 * time.Second)
 	}
 
