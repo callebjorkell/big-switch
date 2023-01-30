@@ -14,6 +14,7 @@ import (
 type Server struct {
 	passChan chan string
 	server   http.Server
+	running  bool
 }
 
 func NewServer() *Server {
@@ -30,19 +31,39 @@ func (p *Server) PassChan() <-chan string {
 func (p *Server) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	p.running = false
 	log.Debug("Closing passphrase server...")
 	return p.server.Shutdown(ctx)
 }
 
 func (p *Server) Listen() {
-	lcd.Print("Enter passphrase", fmt.Sprintf("@%v", defaultOutboundIP()))
-
 	server := http.Server{Addr: ":8090"}
 	http.HandleFunc("/", passwordForm)
 	http.HandleFunc("/passphrase", passphraseReader(p.passChan))
+	p.running = true
+
 	log.Infof("Starting server on %v. Waiting for passphrase.", server.Addr)
+	p.showCurrentIP()
 
 	server.ListenAndServe()
+}
+
+func (p *Server) showCurrentIP() {
+	var ip string
+
+	for i := 0; i < 10; i++ {
+		if !p.running {
+			return
+		}
+
+		ip = defaultOutboundIP()
+		if ip != "unknown address" {
+			break
+		}
+		<-time.After(6 * time.Second)
+	}
+
+	lcd.Print("Enter passphrase", fmt.Sprintf("@%v", ip))
 }
 
 const form = `
