@@ -114,6 +114,8 @@ func startServer(encryptedConfig bool) {
 	if err != nil {
 		lcd.Print("Failed to start!", "")
 		led.Flash(neopixel.ColorRed)
+		// sleep to throttle retries (restarts)
+		<-time.After(5 * time.Second)
 		log.Fatal(err)
 		return
 	}
