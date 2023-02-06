@@ -11,6 +11,7 @@ const (
 )
 
 type Config struct {
+	RestartCron    string `yaml:"restartCron"`
 	ReleaseManager struct {
 		Url    string `yaml:"url"`
 		Token  string `yaml:"token"`

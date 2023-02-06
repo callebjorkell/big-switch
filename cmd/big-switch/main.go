@@ -13,6 +13,7 @@ import (
 	"github.com/callebjorkell/big-switch/internal/lcd"
 	"github.com/callebjorkell/big-switch/internal/neopixel"
 	"github.com/callebjorkell/big-switch/internal/passphrase"
+	"github.com/robfig/cron/v3"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/pbkdf2"
 	"os"
@@ -118,6 +119,27 @@ func startServer(encryptedConfig bool) {
 		<-time.After(5 * time.Second)
 		log.Fatal(err)
 		return
+	}
+
+	if conf.RestartCron != "" {
+		log.Infof("Scheduling kill switch to %v", conf.RestartCron)
+		c := cron.New()
+		_, err := c.AddFunc(conf.RestartCron, func() {
+			log.Infof("Executing scheduled restart at %v", time.Now())
+			led.QuickFlash(neopixel.ColorYellow)
+			cancel()
+		})
+		if err != nil {
+			lcd.Print("Failed to setup", "kill switch")
+			led.Flash(neopixel.ColorRed)
+			// sleep to throttle retries (restarts)
+			<-time.After(5 * time.Second)
+			log.Fatal("Kill switch could not be scheduled: %v", err)
+			return
+		}
+		c.Start()
+	} else {
+		log.Info("Restart cron is not set in config. Kill switch inactive.")
 	}
 
 	go led.Rainbow()

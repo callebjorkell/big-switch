@@ -3,6 +3,7 @@ module github.com/callebjorkell/big-switch
 go 1.19
 
 require (
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rpi-ws281x/rpi-ws281x-go v1.0.8
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1

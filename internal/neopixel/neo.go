@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	brightness = 250
-	ledCounts  = 24
-	ColorRed   = 0xFF0000
-	ColorGreen = 0x00FF00
+	brightness  = 250
+	ledCounts   = 24
+	ColorRed    = 0xFF0000
+	ColorYellow = 0xFFFF00
+	ColorGreen  = 0x00FF00
 )
 
 type wsEngine interface {

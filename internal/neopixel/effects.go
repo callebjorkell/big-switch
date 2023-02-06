@@ -6,6 +6,37 @@ import (
 	"time"
 )
 
+func (l *LedController) QuickFlash(color uint32) {
+	done := l.interruptor.Interrupt()
+	defer done()
+	defer l.clear()
+
+	light := uint32(0)
+	increase := true
+	log.Debugf("QuickFlash color: %06x", color)
+	tick := time.NewTicker(5 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		c := withBrightness(color, light)
+
+		l.setColor(c)
+
+		if increase {
+			light++
+			if light > 100 {
+				increase = false
+			}
+		} else {
+			if light == 0 {
+				break
+			}
+			light--
+		}
+
+		<-tick.C
+	}
+}
+
 func (l *LedController) Flash(color uint32) {
 	done := l.interruptor.Interrupt()
 	defer done()
