@@ -161,6 +161,8 @@ func ChangeListener(
 		alertDuration = time.Duration(alertSeconds) * time.Second
 	}
 
+	log.Infof("%v used as alert duration", alertDuration)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -183,7 +185,7 @@ func ChangeListener(
 						notifier.Success()
 					}
 				}
-			case <-time.After(alertDuration * time.Second):
+			case <-time.After(alertDuration):
 				log.Info("Confirmation timed out.")
 			}
 			notifier.Reset()
