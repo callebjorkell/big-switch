@@ -54,7 +54,7 @@ func TestChangeListenerNotArmed(t *testing.T) {
 	promoter := NewPromoterMock(nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go ChangeListener(ctx, notifier, promoter, changes, confirmations)
+	go ChangeListener(ctx, notifier, promoter, 45, changes, confirmations)
 
 	select {
 	case confirmations <- true:
@@ -71,7 +71,7 @@ func TestChangeListenerAlerting(t *testing.T) {
 	promoter := NewPromoterMock(nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go ChangeListener(ctx, notifier, promoter, changes, confirmations)
+	go ChangeListener(ctx, notifier, promoter, 45, changes, confirmations)
 
 	changes <- ChangeEvent{Service: "test-service", Artifact: "some-artifact"}
 
@@ -88,7 +88,7 @@ func TestChangeListenerDeploying(t *testing.T) {
 	promoter := NewPromoterMock(nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go ChangeListener(ctx, notifier, promoter, changes, confirmations)
+	go ChangeListener(ctx, notifier, promoter, 45, changes, confirmations)
 
 	changes <- ChangeEvent{Service: "test-service", Artifact: "some-artifact"}
 	notifier.WaitForInteraction(50 * time.Millisecond)

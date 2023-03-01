@@ -12,6 +12,7 @@ const (
 
 type Config struct {
 	RestartCron    string `yaml:"restartCron"`
+	AlertDuration  int    `yaml:"alertDuration"`
 	ReleaseManager struct {
 		Url    string `yaml:"url"`
 		Token  string `yaml:"token"`

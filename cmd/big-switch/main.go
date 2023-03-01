@@ -134,7 +134,7 @@ func startServer(encryptedConfig bool) {
 			led.Flash(neopixel.ColorRed)
 			// sleep to throttle retries (restarts)
 			<-time.After(5 * time.Second)
-			log.Fatal("Kill switch could not be scheduled: %v", err)
+			log.Fatalf("Kill switch could not be scheduled: %v", err)
 			return
 		}
 		c.Start()
@@ -160,7 +160,7 @@ func startServer(encryptedConfig bool) {
 	notifier := &LedNotifier{led: led, colorMap: conf.ColorMap()}
 
 	confirm := startConfirmChannel(ctx)
-	go deploy.ChangeListener(ctx, notifier, promoter, watcher.Changes(), confirm)
+	go deploy.ChangeListener(ctx, notifier, promoter, conf.AlertDuration, watcher.Changes(), confirm)
 
 	<-ctx.Done()
 	lcd.ClearAll()

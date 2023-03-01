@@ -152,9 +152,15 @@ func ChangeListener(
 	ctx context.Context,
 	notifier Notifier,
 	promoter Deployer,
+	alertSeconds int,
 	changes <-chan ChangeEvent,
 	confirm <-chan bool,
 ) {
+	alertDuration := 45 * time.Second
+	if alertSeconds > 0 {
+		alertDuration = time.Duration(alertSeconds) * time.Second
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -177,7 +183,7 @@ func ChangeListener(
 						notifier.Success()
 					}
 				}
-			case <-time.After(45 * time.Second):
+			case <-time.After(alertDuration * time.Second):
 				log.Info("Confirmation timed out.")
 			}
 			notifier.Reset()
