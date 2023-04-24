@@ -121,7 +121,7 @@ func (n *NotifierMock) WaitForInteraction(timeout time.Duration) bool {
 	}
 }
 
-func (n *NotifierMock) Alert(service string) {
+func (n *NotifierMock) Alert(service, author string) {
 	n.alertFor = service
 	n.interactionChan <- true
 }

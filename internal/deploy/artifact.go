@@ -29,8 +29,9 @@ func (a Artifacts) EnvironmentsMatch() bool {
 }
 
 type Artifact struct {
-	Time int64  `json:"date"`
-	Name string `json:"tag"`
+	Time   int64  `json:"date"`
+	Name   string `json:"tag"`
+	Author string `json:"author"`
 }
 
 func (a Artifact) Equals(b Artifact) bool {

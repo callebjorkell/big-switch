@@ -157,7 +157,7 @@ func startServer(encryptedConfig bool) {
 	lcd.Reset()
 	lcd.Println(lcd.Line2, lcd.Center("started"))
 
-	notifier := &LedNotifier{led: led, colorMap: conf.ColorMap()}
+	notifier := NewLedNotifier(led, conf.ColorMap(), conf.AuthorMap())
 
 	confirm := startConfirmChannel(ctx)
 	go deploy.ChangeListener(ctx, notifier, promoter, conf.AlertDuration, watcher.Changes(), confirm)
@@ -244,12 +244,22 @@ func readConfig(ctx context.Context, encrypted bool) (*Config, error) {
 }
 
 type LedNotifier struct {
-	led      *neopixel.LedController
-	colorMap map[string]uint32
+	led       *neopixel.LedController
+	colorMap  map[string]uint32
+	authorMap map[string]string
 }
 
-func (l *LedNotifier) Alert(service string) {
-	lcd.Print("Press to deploy!", service)
+func NewLedNotifier(l *neopixel.LedController, colorMap map[string]uint32, authorMap map[string]string) *LedNotifier {
+	return &LedNotifier{
+		led:       l,
+		colorMap:  colorMap,
+		authorMap: authorMap,
+	}
+}
+
+func (l *LedNotifier) Alert(service, author string) {
+	a := l.mapAuthor(author)
+	lcd.Print(service, a)
 
 	color, ok := l.colorMap[service]
 	if !ok {
@@ -269,4 +279,14 @@ func (l *LedNotifier) Failure() {
 func (l *LedNotifier) Reset() {
 	lcd.Reset()
 	l.led.Stop()
+}
+
+func (l *LedNotifier) mapAuthor(author string) string {
+	a, ok := l.authorMap[author]
+	if !ok {
+		// return the first word of the author string (first name?).
+		first, _, _ := strings.Cut(author, " ")
+		return first
+	}
+	return a
 }

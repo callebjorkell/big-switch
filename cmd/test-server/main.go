@@ -23,12 +23,14 @@ var statusTemplate = `{
       "name": "dev",
       "tag": "{{ .DevArtifact }}",
       "committer": "GitHub",
+      "author": "Carl-Magnus Olofsson",
       "date": {{ .DevTime.UnixMilli }}
     },
     {
       "name": "prod",
       "tag": "{{ .ProdArtifact }}",
       "committer": "GitHub",
+      "author": "Carl-Magnus Olofsson",
       "date": {{ .ProdTime.UnixMilli }}
     }
   ]
@@ -44,6 +46,7 @@ var alreadyUpToTemplate = `{
 func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	log.SetLevel(log.DebugLevel)
 
 	handlers := NewHandlers()
 

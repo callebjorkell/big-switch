@@ -11,8 +11,12 @@ const (
 )
 
 type Config struct {
-	RestartCron    string `yaml:"restartCron"`
-	AlertDuration  int    `yaml:"alertDuration"`
+	RestartCron   string `yaml:"restartCron"`
+	AlertDuration int    `yaml:"alertDuration"`
+	Authors       []struct {
+		FullName string `yaml:"fullName"`
+		Alias    string `yaml:"alias"`
+	} `yaml:"authors"`
 	ReleaseManager struct {
 		Url    string `yaml:"url"`
 		Token  string `yaml:"token"`
@@ -33,6 +37,14 @@ func (c Config) ColorMap() map[string]uint32 {
 		colors[service.Name] = service.Color
 	}
 	return colors
+}
+
+func (c Config) AuthorMap() map[string]string {
+	authors := make(map[string]string)
+	for _, author := range c.Authors {
+		authors[author.FullName] = author.Alias
+	}
+	return authors
 }
 
 func parseConfig(content []byte) (*Config, error) {

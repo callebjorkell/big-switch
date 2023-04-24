@@ -10,6 +10,7 @@ import (
 type ChangeEvent struct {
 	Service  string
 	Artifact string
+	Author   string
 }
 
 type Watcher struct {
@@ -88,6 +89,7 @@ func (w *Watcher) AddWatch(service, namespace string, pollingInterval, warmupDur
 				w.changes <- ChangeEvent{
 					Service:  a.Service,
 					Artifact: a.Dev.Name,
+					Author:   a.Dev.Author,
 				}
 			}
 
@@ -138,7 +140,7 @@ func (w *Watcher) GetArtifacts(service, namespace string) (Artifacts, error) {
 }
 
 type Notifier interface {
-	Alert(service string)
+	Alert(service, author string)
 	Success()
 	Failure()
 	Reset()
@@ -169,7 +171,7 @@ func ChangeListener(
 			break
 		case e := <-changes:
 			log.Infof("Service %s changed. Waiting for confirmation!", e.Service)
-			notifier.Alert(e.Service)
+			notifier.Alert(e.Service, e.Author)
 
 			select {
 			case confirmed := <-confirm:
