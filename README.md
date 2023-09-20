@@ -15,7 +15,10 @@ file. To decrypt the file, the server will spawn a HTTP server to receive a decr
 server is booted up. When the file has been successfully been decrypted, the HTTP server shuts down.
 
 ## Config
-Example config:
+The config file is in form of a YAML file placed in `config.yaml` for a plain text config, and in `config.yaml.enc`
+if the configuration file is encrypted. A description of the fields is found below
+
+### Example config
 ```yaml
 restartCron: "15 14 * * 1-5"
 releaseManager:
@@ -33,6 +36,23 @@ authors:
 - fullName: "The other guy"
   alias: "Other"
 ```
+
+### Field description
+- **restartCron**:
+- **alertDuration**: 
+- **authors**: List of author aliases as an object containing 
+  - **fullName** with the name reported by release-manager.
+  - **alias** to be shown on the LCD screen when relevant.
+- **releaseManager**: Object containing 
+  - **url** which is the release-manager endpoint.
+  - **token** which is the secret to use.
+  - **caller** which is the email identifier of the big-switch.
+- **services**: List of objects detailing the services that should be watched for new releases.
+  - **name**: The name of the service to watch.
+  - **namespace**: The kubernetes namespace in which it runs
+  - **color**: Used by the LED rings when notifying about a new release.
+  - **warmupDuration**: The time to wait between noticing a new release and notifying. This is useful to have a delay between releases to the different environments.
+  - **pollingInterval**: How often should release-manager be polled to check for a new release of the service. 
 
 ### CLI
 
