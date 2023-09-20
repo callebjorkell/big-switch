@@ -48,10 +48,10 @@ func encryptFile(file string) error {
 	}
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter passphrase: ")
-	passphrase, _ := reader.ReadString('\n')
-	passphrase = strings.TrimSpace(passphrase)
+	pass, _ := reader.ReadString('\n')
+	pass = strings.TrimSpace(pass)
 
-	key := pbkdf2.Key([]byte(passphrase), encryptionSalt, KeyIterations, KeyLength, sha256.New)
+	key := pbkdf2.Key([]byte(pass), encryptionSalt, KeyIterations, KeyLength, sha256.New)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
